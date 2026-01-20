@@ -1,77 +1,64 @@
-# EnvoysOS 🚀 (v1.1)
+# EnvoysOS 🚀 (v1.2 Production Hardened)
 
-**EnvoysOS** is a master-class, web-based live production tool for church media teams. It's designed to replace complex hardware with a lean, browser-first orchestration system for timers and visuals, optimized for resource-limited environments (e.g., Lagos churches).
-
----
-
-## 🔥 New in v1.1
-- **Persistence Engine**: Native SQLite storage saves your timer states and library even after a power cut.
-- **Smart Target Logic**: Countdown to a specific time correctly, even past midnight.
-- **Precision Segment Timer**: Toggle between "Hard Stop" and "Overrun" (counts negative with red alerts).
-- **Control Shortcuts**: Hit `SPACE` to pause/start your active segment timer.
-- **Content Manager**: Full delete capability, 50MB file validation, and instant "GO LIVE" previews.
-- **Unified Branding**: Premium dark-mode UI with consistent fonts and glassmorphism.
-- **Production Routing**: Backend now correctly serves built frontend files for single-command deployment.
+**EnvoysOS** is a master-class, web-based live production tool for church media teams. It's designed for mission-critical reliability on low-spec hardware, providing a lean orchestration system for timers and visuals.
 
 ---
 
-## ✨ Core Features
-- **Triple-Timer Sync**: Segment (Sermon), Target (Service End), and Elapsed (Total) timers.
-- **Multi-View Outputs**:
-  - `/audience`: Cinematic display for projectors.
-  - `/stage`: High-visibility monitor for pastors (System Clock + Notes).
-  - `/stream`: Low-third overlay with alpha-transparency (OBS ready).
-- **Collaborative**: Connect infinite devices on the same LAN (Smart TVs, Tablets, Phones).
+## 🔥 New in v1.2 (Hardened)
+- **State Resilience**: Precision SQLite persistence with automated timestamped backups.
+- **Optimistic Sync**: Instant UI response with background synchronization and automatic error rollback.
+- **Chroma Key Support**: Integrated green-screen mode for hardware mixers/blackmagic switchers.
+- **Smart Connectivity**: Cross-network IP discovery—see exactly what URL to type on your iPad or Smart TV.
+- **Storage Protection**: Configurable media quota and automatic file validation (Safety First).
+- **Keyboard Mastery**: Hardened global shortcuts (e.g., `SPACE` to toggle segments) that respect text inputs.
+- **Production Standard**: Helmet security, rate limiting, and Express 4 stable core for mission-critical uptime.
 
 ---
 
-## 🛠 Tech Stack
+## ✨ Core Displays
+- **`/` (Dashboard)**: The Master Commander. Control all timers, visuals, and media gallery.
+- **`/audience`**: High-impact viewer for projectors. Supports video backgrounds and animated lower-thirds.
+- **`/stage`**: High-contrast confidence monitor for the pulpit (Huge timers + system clock + notes).
+- **`/stream`**: OBS-ready overlay with transparency/chroma options and smooth alpha-transitions.
+
+---
+
+## 🛠 Advanced Tech Stack
 - **Frontend**: React 19, Tailwind CSS, Framer Motion, Zustand.
-- **Backend*: Node.js, Express, Socket.io, SQLite3.
-- **Security**: `.env` configuration for secrets and ports.
+- **Backend*: Node.js (Hardened), Socket.io v4, SQLite3, Multer.
+- **Global**: i18next (English & Yoruba supported), Docker-ready.
 
 ---
 
-## 🚀 One-Step Setup
+## 🚀 Deployment
 
-### 1. Installation
-```bash
-# Clone and install dependencies
-git clone <repo-url>
-cd TheEnvoysOS
-npm run setup
-```
+### Quick Start (Local)
+1. **Init**: `npm run setup`
+2. **Start**: `npm start`
+3. **Access**: Check the terminal logs for your local IP (e.g., `192.168.1.5:3001`).
 
-### 2. Configuration
-Create a `.env` file in the root (already generated if using this AI):
+### Environment Config (`.env`)
 ```env
 PORT=3001
-JWT_SECRET=your_secret
-ADMIN_PASSWORD=admin123
+JWT_SECRET=your_secret_key
+STORAGE_QUOTA_MB=1000
 ```
 
-### 3. Start Orchestrator
+### Docker
 ```bash
-npm start
+docker build -t envoysos .
+docker run -p 3001:3001 envoysos
 ```
-
----
-
-## 📺 Outputs
-- **Operator Hub**: `http://localhost:3001` (or your IP)
-- **Audience**: `http://localhost:3001/audience`
-- **Stage**: `http://localhost:3001/stage`
-- **OBS**: `http://localhost:3001/stream`
 
 ---
 
 ## 🎹 Keyboard Shortcuts
 | Key | Action |
 | --- | --- |
-| `SPACE` | Toggle Active Segment Timer (Play/Pause) |
-| `R` | Reset System (Coming soon) |
+| `SPACE` | Toggle Active Segment Timer |
+| `CTRL+ALT+R` | (Coming) Global Hardware Reset |
 
 ---
 
 ## 📜 License
-MIT | Built for the global church by Antigravity.
+MIT | Built for the global church.

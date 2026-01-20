@@ -3,13 +3,16 @@ import { io } from 'socket.io-client';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-// Dynamic host discovery
 const PROTOCOL = window.location.protocol;
 const HOSTNAME = window.location.hostname;
 const PORT = '3001';
 const BASE_URL = `${PROTOCOL}//${HOSTNAME}:${PORT}`;
 
-const socket = io(BASE_URL);
+const socket = io(BASE_URL, {
+    reconnectionAttempts: 10,
+    reconnectionDelay: 1000,
+    timeout: 5000
+});
 
 const useStore = create((set, get) => ({
     timers: {
@@ -21,19 +24,23 @@ const useStore = create((set, get) => ({
         background: null,
         overlayText: '',
         timerVisible: true,
-        theme: 'default'
+        theme: 'default',
+        chromaKey: false,
+        positions: { timer: 'center', overlay: 'top' }
     },
     media: [],
+    storageStats: { usage: 0, quota: 0 },
     isConnected: false,
     isLoading: true,
+    isSyncing: false,
+    lastValidState: null,
 
     // Actions
     fetchMedia: async () => {
         try {
             const res = await axios.get(`${BASE_URL}/api/media`);
-            set({ media: res.data });
+            set({ media: res.data.media, storageStats: { usage: res.data.usage, quota: res.data.quota } });
         } catch (err) {
-            console.error('Failed to fetch media', err);
             toast.error('Could not load media library');
         } finally {
             set({ isLoading: false });
@@ -49,47 +56,118 @@ const useStore = create((set, get) => ({
         }
     },
 
-    updateTimer: (timerKey, data) => {
-        const newTimers = { ...get().timers, [timerKey]: { ...get().timers[timerKey], ...data } };
+    updateTimer: async (timerKey, data) => {
+        const state = get();
+        const previousTimers = { ...state.timers };
+        const newTimers = { ...state.timers, [timerKey]: { ...state.timers[timerKey], ...data } };
+
         // Optimistic update
-        set({ timers: newTimers });
-        socket.emit('updateTimer', { [timerKey]: newTimers[timerKey] });
+        set({ timers: newTimers, isSyncing: true });
+
+        socket.emit('updateTimer', { [timerKey]: newTimers[timerKey] }, (response) => {
+            set({ isSyncing: false });
+            if (response?.status === 'error') {
+                set({ timers: previousTimers });
+                toast.error(`Sync failed: ${response.message}`);
+            }
+        });
     },
 
     updateScene: (data) => {
-        const newScene = { ...get().currentScene, ...data };
-        set({ currentScene: newScene });
-        socket.emit('updateScene', data);
-    },
+        const state = get();
+        const previousScene = { ...state.currentScene };
+        const newScene = { ...state.currentScene, ...data };
 
-    pushToLive: () => {
-        // Implementation for staged scenes can go here
-        toast.success('Changes pushed to live');
+        set({ currentScene: newScene, isSyncing: true });
+
+        socket.emit('updateScene', data, (response) => {
+            set({ isSyncing: false });
+            if (response?.status === 'error') {
+                set({ currentScene: previousScene });
+                toast.error('Scene sync failed');
+            }
+        });
     },
 
     resetAll: () => {
-        socket.emit('resetAll');
-        toast('System reset', { icon: '🔄' });
+        socket.emit('resetAll', (response) => {
+            if (response?.status === 'ok') {
+                toast.success('System reset complete');
+            }
+        });
+    },
+
+    // Local Client-Side heartbeat for smooth UI/offline support
+    tick: () => {
+        const { timers, isConnected } = get();
+        // Only tick locally if running. If disconnected, we continue ticking to show estimated time.
+        let changed = false;
+        const newTimers = { ...timers };
+
+        if (newTimers.segment.running) {
+            if (newTimers.segment.behavior === 'stop') {
+                if (newTimers.segment.remaining > 0) {
+                    newTimers.segment.remaining -= 1;
+                    changed = true;
+                } else {
+                    newTimers.segment.running = false;
+                    changed = true;
+                }
+            } else {
+                newTimers.segment.remaining -= 1;
+                changed = true;
+            }
+        }
+
+        if (newTimers.elapsed.running) {
+            newTimers.elapsed.seconds += 1;
+            changed = true;
+        }
+
+        // Target calculates from system clock, so it's always accurate locally
+        const now = new Date();
+        const [tH, tM] = newTimers.target.targetTime.split(':').map(Number);
+        let tD = new Date();
+        tD.setHours(tH, tM, 0, 0);
+        if (tD < now) tD.setDate(tD.getDate() + 1);
+        const diff = Math.floor((tD - now) / 1000);
+        if (newTimers.target.remaining !== diff) {
+            newTimers.target.remaining = diff;
+            changed = true;
+        }
+
+        if (changed) {
+            set({ timers: newTimers });
+        }
     }
 }));
+
+// Local precision interval
+setInterval(() => {
+    useStore.getState().tick();
+}, 1000);
 
 // Socket Listeners
 socket.on('connect', () => {
     set({ isConnected: true });
     useStore.getState().fetchMedia();
+    toast.success('Connected to Envoys Hub');
 });
 
 socket.on('disconnect', () => {
     set({ isConnected: false });
+    toast.error('Lost connection to Hub. Running in local fallback mode.');
 });
 
 socket.on('stateUpdate', (state) => {
-    useStore.setState({ timers: state.timers, currentScene: state.currentScene });
+    // Only update if not currently syncing to avoid UI jitter
+    if (!useStore.getState().isSyncing) {
+        useStore.setState({ timers: state.timers, currentScene: state.currentScene });
+    }
 });
 
 socket.on('mediaAdded', (newMedia) => {
     useStore.setState((state) => ({ media: [newMedia, ...state.media] }));
-    toast.success('New media uploaded');
 });
 
 socket.on('mediaDeleted', (id) => {

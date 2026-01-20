@@ -20,6 +20,12 @@ i18n
                     reset: "System Reset",
                     upload: "Upload Content",
                     go_live: "Go Live",
+                    sermon_segment: "Sermon Segment",
+                    service_target: "Service Target",
+                    active_session: "Active Session",
+                    clear_scene: "Clear Scene",
+                    overrun: "Time Overrun",
+                    live_countdown: "Live Countdown"
                 }
             },
             yo: {
@@ -29,6 +35,11 @@ i18n
                     stage: "Ibi Ìdúró Àwọn Òṣèlú",
                     upload: "Gbé Àkóónú",
                     go_live: "Bẹ̀rẹ̀",
+                    sermon_segment: "Abala Iwaasu",
+                    service_target: "Àfojúsùn Ìsìn",
+                    active_session: "Ìgbèkùn Tó Wà",
+                    clear_scene: "Pa Àwòrán Rẹ́",
+                    overrun: "Àkókò Ti Kọjá"
                 }
             }
         }

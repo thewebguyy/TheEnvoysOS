@@ -17,44 +17,53 @@ const Stream = () => {
     const isUrgent = time < 60 && time > 0;
     const isOverrun = time < 0;
 
+    // Chroma Key logic: if enabled, we use a solid green background for external hardware mixers
+    const bgColor = currentScene.chromaKey ? 'bg-[#00b140]' : 'bg-transparent';
+
     return (
-        <div className="h-screen w-full bg-transparent flex flex-col justify-end p-12 overflow-hidden">
+        <div className={`h-screen w-full ${bgColor} flex flex-col justify-end p-12 overflow-hidden transition-colors duration-1000`}>
             <AnimatePresence>
-                {currentScene.timerVisible && (
+                {(currentScene.timerVisible || currentScene.overlayText) && (
                     <motion.div
                         initial={{ opacity: 0, y: 100, scale: 0.9 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 100, scale: 0.9 }}
-                        className="flex flex-col items-start gap-4"
+                        className="flex flex-col items-start gap-6 max-w-4xl"
                     >
+                        {/* Lower Third Banner */}
                         {currentScene.overlayText && (
                             <motion.div
-                                initial={{ opacity: 0, x: -20 }}
+                                initial={{ opacity: 0, x: -50 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                className="bg-black/90 backdrop-blur-xl px-8 py-3 rounded-2xl border-l-8 border-secondary shadow-2xl"
+                                className="bg-black/90 backdrop-blur-3xl px-12 py-5 rounded-[2rem] border-l-[12px] border-secondary shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
                             >
-                                <p className="text-white text-3xl font-black uppercase tracking-tight leading-none">
+                                <p className="text-white text-5xl font-black uppercase tracking-tight leading-loose">
                                     {currentScene.overlayText}
                                 </p>
                             </motion.div>
                         )}
 
-                        <div className={`bg-black/90 backdrop-blur-xl px-10 py-6 rounded-[2rem] border-l-[12px] shadow-2xl flex items-center gap-10 transition-colors duration-500 ${isOverrun ? 'border-red-500' : (isUrgent ? 'border-amber-500' : 'border-primary')}`}>
-                            <div className="flex flex-col">
-                                <span className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 ${isOverrun ? 'text-red-400' : 'text-slate-400'}`}>
-                                    {isOverrun ? 'TIME OVERRUN' : 'LIVE COUNTDOWN'}
-                                </span>
-                                <span className={`text-8xl font-mono font-black tabular-nums tracking-tighter leading-none ${isOverrun ? 'text-red-500' : 'text-white'}`}>
-                                    {formatTime(time)}
-                                </span>
-                            </div>
+                        {/* Timer Module */}
+                        {currentScene.timerVisible && (
+                            <motion.div
+                                layout
+                                className={`bg-black/90 backdrop-blur-3xl px-12 py-8 rounded-[2.5rem] border-l-[16px] shadow-[0_30px_60px_rgba(0,0,0,0.6)] flex items-center gap-12 transition-all duration-700 ${isOverrun ? 'border-red-500' : (isUrgent ? 'border-amber-500' : 'border-primary')}`}
+                            >
+                                <div className="flex flex-col">
+                                    <span className={`text-[12px] font-black uppercase tracking-[0.4em] mb-2 ${isOverrun ? 'text-red-400' : 'text-slate-400'}`}>
+                                        {isOverrun ? 'OVERRUN' : 'LIVE COUNTDOWN'}
+                                    </span>
+                                    <span className={`text-9xl font-mono font-black tabular-nums tracking-tighter leading-none ${isOverrun ? 'text-red-500' : 'text-white'}`}>
+                                        {formatTime(time)}
+                                    </span>
+                                </div>
 
-                            {/* Animated Pulse circle for "Live" effect */}
-                            <div className="relative flex items-center justify-center">
-                                <div className={`w-4 h-4 rounded-full ${isOverrun ? 'bg-red-500' : 'bg-primary'}`} />
-                                <div className={`absolute w-full h-full rounded-full animate-ping opacity-40 ${isOverrun ? 'bg-red-500' : 'bg-primary'}`} />
-                            </div>
-                        </div>
+                                <div className="relative flex items-center justify-center">
+                                    <div className={`w-6 h-6 rounded-full ${isOverrun ? 'bg-red-500' : 'bg-primary'}`} />
+                                    <div className={`absolute w-12 h-12 rounded-full animate-ping opacity-30 ${isOverrun ? 'bg-red-500' : 'bg-primary'}`} />
+                                </div>
+                            </motion.div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
