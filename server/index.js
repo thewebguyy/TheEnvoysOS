@@ -14,6 +14,13 @@ const rateLimit = require('express-rate-limit');
 
 const CURRENT_SCHEMA_VERSION = 1;
 const PORT = process.env.PORT || 3001;
+const FRONTEND_URL = process.env.FRONTEND_URL || '*';
+
+// Render Persistent Disk Support
+const PERSISTENT_DIR = process.env.PERSISTENT_DISK_PATH || __dirname;
+const uploadDir = process.env.UPLOADS_PATH || path.join(PERSISTENT_DIR, 'uploads');
+const dbPath = process.env.DB_PATH || path.join(PERSISTENT_DIR, 'database.sqlite');
+const backupDir = path.join(PERSISTENT_DIR, 'backups');
 
 const app = express();
 
@@ -21,7 +28,10 @@ const app = express();
 app.use(helmet({
     contentSecurityPolicy: false,
 }));
-app.use(cors());
+app.use(cors({
+    origin: FRONTEND_URL,
+    methods: ["GET", "POST", "DELETE"]
+}));
 app.use(express.json());
 
 const limiter = rateLimit({
@@ -30,10 +40,7 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-const uploadDir = path.join(__dirname, 'uploads');
-const dbPath = path.join(__dirname, 'database.sqlite');
-const backupDir = path.join(__dirname, 'backups');
-
+// Ensure directories exist
 fs.ensureDirSync(uploadDir);
 fs.ensureDirSync(backupDir);
 
@@ -215,7 +222,7 @@ app.delete('/api/media/:id', async (req, res) => {
     try {
         const item = await db.get('SELECT * FROM media WHERE id = ?', req.params.id);
         if (item) {
-            const filePath = path.join(__dirname, item.path);
+            const filePath = path.join(uploadDir, path.basename(item.path));
             if (await fs.pathExists(filePath)) await fs.remove(filePath);
             await db.run('DELETE FROM media WHERE id = ?', req.params.id);
             io.emit('mediaDeleted', req.params.id);
@@ -234,7 +241,7 @@ app.get('/api/info', (req, res) => {
 
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: { origin: "*", methods: ["GET", "POST"] }
+    cors: { origin: FRONTEND_URL, methods: ["GET", "POST"] }
 });
 
 // Precision Ticker
@@ -322,13 +329,13 @@ io.on('connection', (socket) => {
 initDB().then(() => {
     server.listen(PORT, '0.0.0.0', () => {
         const nets = getNetworkInfo();
-        console.log(`\n🚀 EnvoysOS v1.2.1 Hardened Server`);
+        console.log(`\n🚀 EnvoysOS v1.2.2 Production Ready`);
         console.log(` Port: ${PORT}`);
-        nets.forEach(n => console.log(` ${n.name}: http://${n.address}:${PORT}`));
+        console.log(` Bound: 0.0.0.0`);
     });
 });
 
-// Serving logic - move after API routes but it's okay
+// Production Serving
 const clientPath = path.join(__dirname, '../client/dist');
 if (fs.pathExistsSync(clientPath)) {
     app.use(express.static(clientPath));

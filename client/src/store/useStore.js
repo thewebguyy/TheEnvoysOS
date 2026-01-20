@@ -3,10 +3,9 @@ import { io } from 'socket.io-client';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const PROTOCOL = window.location.protocol;
-const HOSTNAME = window.location.hostname;
-const PORT = '3001';
-const BASE_URL = `${PROTOCOL}//${HOSTNAME}:${PORT}`;
+// Dynamic host discovery for both local and production
+const isProd = import.meta.env.PROD;
+const BASE_URL = isProd ? window.location.origin : `${window.location.protocol}//${window.location.hostname}:3001`;
 
 const socket = io(BASE_URL, {
     reconnectionAttempts: 10,
@@ -97,10 +96,9 @@ const useStore = create((set, get) => ({
         });
     },
 
-    // Local Client-Side heartbeat for smooth UI/offline support
+    // Local Client-Side heartbeat
     tick: () => {
-        const { timers, isConnected } = get();
-        // Only tick locally if running. If disconnected, we continue ticking to show estimated time.
+        const { timers } = get();
         let changed = false;
         const newTimers = { ...timers };
 
@@ -124,7 +122,6 @@ const useStore = create((set, get) => ({
             changed = true;
         }
 
-        // Target calculates from system clock, so it's always accurate locally
         const now = new Date();
         const [tH, tM] = newTimers.target.targetTime.split(':').map(Number);
         let tD = new Date();
@@ -156,11 +153,10 @@ socket.on('connect', () => {
 
 socket.on('disconnect', () => {
     set({ isConnected: false });
-    toast.error('Lost connection to Hub. Running in local fallback mode.');
+    toast.error('Lost connection to Hub.');
 });
 
 socket.on('stateUpdate', (state) => {
-    // Only update if not currently syncing to avoid UI jitter
     if (!useStore.getState().isSyncing) {
         useStore.setState({ timers: state.timers, currentScene: state.currentScene });
     }

@@ -13,5 +13,8 @@
         "fs-extra": "^11.3.3",
         "helmet": "^8.1.0",
         "jsonwebtoken": "^9.0.3"
+    },
+    "engines": {
+        "node": ">=20.0.0"
     }
 }
