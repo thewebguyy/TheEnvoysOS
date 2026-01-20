@@ -7,15 +7,24 @@ export default {
     theme: {
         extend: {
             colors: {
-                background: '#0a0a0b',
-                surface: '#161618',
-                'surface-hover': '#232326',
-                primary: '#6366f1',
-                secondary: '#a855f7',
-                accent: '#f43f5e',
+                background: '#121212',
+                surface: '#1E1E1E',
+                'surface-hover': '#2C2C2E',
+                primary: '#3B82F6',
+                secondary: '#10B981',
+                accent: '#F43F5E',
+                'faith-green': '#10B981',
+                'faith-blue': '#3B82F6',
             },
             animation: {
                 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                'float': 'float 6s ease-in-out infinite',
+            },
+            keyframes: {
+                float: {
+                    '0%, 100%': { transform: 'translateY(0)' },
+                    '50%': { transform: 'translateY(-10px)' },
+                }
             }
         },
     },
