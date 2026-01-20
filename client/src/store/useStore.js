@@ -1,8 +1,15 @@
 import { create } from 'zustand';
 import { io } from 'socket.io-client';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
-const socket = io('http://localhost:3001');
+// Dynamic host discovery
+const PROTOCOL = window.location.protocol;
+const HOSTNAME = window.location.hostname;
+const PORT = '3001';
+const BASE_URL = `${PROTOCOL}//${HOSTNAME}:${PORT}`;
+
+const socket = io(BASE_URL);
 
 const useStore = create((set, get) => ({
     timers: {
@@ -13,27 +20,39 @@ const useStore = create((set, get) => ({
     currentScene: {
         background: null,
         overlayText: '',
-        timerVisible: true
+        timerVisible: true,
+        theme: 'default'
     },
     media: [],
     isConnected: false,
+    isLoading: true,
 
-    setTimers: (timers) => set({ timers }),
-    setScene: (scene) => set({ currentScene: scene }),
-    setMedia: (media) => set({ media }),
-
+    // Actions
     fetchMedia: async () => {
         try {
-            const res = await axios.get('http://localhost:3001/api/media');
+            const res = await axios.get(`${BASE_URL}/api/media`);
             set({ media: res.data });
         } catch (err) {
             console.error('Failed to fetch media', err);
+            toast.error('Could not load media library');
+        } finally {
+            set({ isLoading: false });
+        }
+    },
+
+    deleteMedia: async (id) => {
+        try {
+            await axios.delete(`${BASE_URL}/api/media/${id}`);
+            toast.success('Media deleted');
+        } catch (err) {
+            toast.error('Failed to delete media');
         }
     },
 
     updateTimer: (timerKey, data) => {
         const newTimers = { ...get().timers, [timerKey]: { ...get().timers[timerKey], ...data } };
-        set({ timers: newTimers }); // Update local state immediately for responsiveness
+        // Optimistic update
+        set({ timers: newTimers });
         socket.emit('updateTimer', { [timerKey]: newTimers[timerKey] });
     },
 
@@ -41,16 +60,27 @@ const useStore = create((set, get) => ({
         const newScene = { ...get().currentScene, ...data };
         set({ currentScene: newScene });
         socket.emit('updateScene', data);
+    },
+
+    pushToLive: () => {
+        // Implementation for staged scenes can go here
+        toast.success('Changes pushed to live');
+    },
+
+    resetAll: () => {
+        socket.emit('resetAll');
+        toast('System reset', { icon: '🔄' });
     }
 }));
 
+// Socket Listeners
 socket.on('connect', () => {
-    useStore.setState({ isConnected: true });
+    set({ isConnected: true });
     useStore.getState().fetchMedia();
 });
 
 socket.on('disconnect', () => {
-    useStore.setState({ isConnected: false });
+    set({ isConnected: false });
 });
 
 socket.on('stateUpdate', (state) => {
@@ -58,7 +88,15 @@ socket.on('stateUpdate', (state) => {
 });
 
 socket.on('mediaAdded', (newMedia) => {
-    useStore.setState((state) => ({ media: [...state.media, newMedia] }));
+    useStore.setState((state) => ({ media: [newMedia, ...state.media] }));
+    toast.success('New media uploaded');
 });
 
+socket.on('mediaDeleted', (id) => {
+    useStore.setState((state) => ({
+        media: state.media.filter(m => m.id.toString() !== id.toString())
+    }));
+});
+
+export { BASE_URL };
 export default useStore;

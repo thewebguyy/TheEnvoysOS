@@ -2,7 +2,13 @@
     "name": "theenvoysos",
     "version": "1.0.0",
     "scripts": {
+        "setup": "npm install && cd server && npm install && cd ../client && npm install",
         "dev": "node dev.js",
         "start": "node dev.js"
+    },
+    "dependencies": {
+        "bcryptjs": "^3.0.3",
+        "dotenv": "^17.2.3",
+        "jsonwebtoken": "^9.0.3"
     }
 }
