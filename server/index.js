@@ -339,8 +339,8 @@ initDB().then(() => {
 const clientPath = path.join(__dirname, '../client/dist');
 if (fs.pathExistsSync(clientPath)) {
     app.use(express.static(clientPath));
-    app.get('(.*)', (req, res) => {
-        if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) return;
+    app.get(/.*/, (req, res, next) => {
+        if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) return next();
         res.sendFile(path.join(clientPath, 'index.html'));
     });
 }

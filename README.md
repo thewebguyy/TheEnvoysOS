@@ -50,7 +50,7 @@ cd server && node index.js
 ### Environment Config (`server/.env`)
 ```env
 PORT=10000
-DB_PATH='./database.sqlite'
+DB_PATH='./data.db'
 UPLOAD_DIR='./uploads'
 STORAGE_QUOTA_MB=1000
 ```
