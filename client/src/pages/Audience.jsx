@@ -21,10 +21,10 @@ const Audience = () => {
     const isOverrun = time < 0;
 
     return (
-        <div className="h-screen w-full relative overflow-hidden bg-black flex flex-col items-center justify-center font-sans">
+        <div className="h-screen w-full relative overflow-hidden bg-[#0a0a0b] flex flex-col items-center justify-center font-sans">
             {/* Background Media */}
             <div className="absolute inset-0 z-0">
-                <div className="absolute inset-0 bg-black/40 z-10" />
+                <div className="absolute inset-0 bg-black/50 z-10" />
                 {currentScene.background ? (
                     currentScene.background.toLowerCase().match(/\.(mp4|webm)$/) ? (
                         <video
@@ -42,23 +42,25 @@ const Audience = () => {
                         />
                     )
                 ) : (
-                    <div className="w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/30 via-slate-900 to-black" />
+                    <div className="w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/20 via-[#0a0a0b] to-black" />
                 )}
             </div>
 
             {/* Main Content */}
-            <div className="relative z-20 w-full max-w-7xl px-8 text-center space-y-16">
+            <div className="relative z-20 w-full max-w-[90vw] px-8 text-center flex flex-col items-center gap-12">
                 <AnimatePresence mode="wait">
                     {currentScene.overlayText && (
                         <motion.div
                             key={currentScene.overlayText}
-                            initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }}
-                            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                            exit={{ opacity: 0, y: -50, filter: 'blur(10px)' }}
-                            transition={{ duration: 0.8, ease: "easeOut" }}
-                            className="text-5xl md:text-8xl font-black text-white drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)] leading-tight uppercase tracking-tighter"
+                            initial={{ opacity: 0, scale: 0.9, filter: 'blur(20px)' }}
+                            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                            exit={{ opacity: 0, scale: 1.1, filter: 'blur(20px)' }}
+                            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+                            className="glass px-12 py-8 rounded-[3rem] border border-white/10 max-w-5xl"
                         >
-                            {currentScene.overlayText}
+                            <h2 className="text-5xl md:text-7xl font-black text-white drop-shadow-2xl leading-[1.1] uppercase tracking-tighter">
+                                {currentScene.overlayText}
+                            </h2>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -66,23 +68,26 @@ const Audience = () => {
                 {currentScene.timerVisible && (
                     <motion.div
                         animate={{
-                            scale: isUrgent ? [1, 1.02, 1] : 1,
-                            color: isOverrun ? '#f43f5e' : (isUrgent ? '#fbbf24' : '#ffffff')
+                            scale: isUrgent ? [1, 1.05, 1] : 1,
+                            color: isOverrun ? '#F43F5E' : (isUrgent ? '#F59E0B' : '#FFFFFF'),
+                            opacity: isOverrun ? [1, 0.6, 1] : 1
                         }}
                         transition={{
                             scale: { repeat: isUrgent ? Infinity : 0, duration: 1 },
+                            opacity: { repeat: isOverrun ? Infinity : 0, duration: 0.5 },
                             color: { duration: 0.5 }
                         }}
-                        className="text-[18rem] md:text-[28rem] font-mono font-black tracking-tighter tabular-nums drop-shadow-[0_20px_60px_rgba(0,0,0,1)] leading-[0.7]"
+                        className="text-[25vw] font-mono font-black tracking-tighter tabular-nums drop-shadow-[0_0_80px_rgba(0,0,0,0.5)] leading-none select-none"
                     >
                         {formatTime(time)}
                     </motion.div>
                 )}
             </div>
 
-            {/* Branding / Footer */}
-            <div className="absolute bottom-16 left-0 w-full text-center opacity-30 z-20">
-                <h2 className="text-3xl font-black tracking-[0.8em] uppercase text-white drop-shadow-lg">TheEnvoysOS</h2>
+            {/* Bottom Branding */}
+            <div className="absolute bottom-12 left-0 w-full flex flex-col items-center gap-2 opacity-20 z-20 pointer-events-none">
+                <div className="w-12 h-0.5 bg-white/50 rounded-full" />
+                <h2 className="text-xl font-black tracking-[0.6em] uppercase text-white">ENVOYS OS</h2>
             </div>
         </div>
     );

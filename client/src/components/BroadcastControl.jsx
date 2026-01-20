@@ -41,7 +41,12 @@ const BroadcastControl = ({ currentScene, updateScene, timers, isVoiceActive, se
                 <div className="space-y-3">
                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex justify-between px-1">
                         Active Overlay Text
-                        <span className="text-primary/60">{currentScene.overlayText.length} / 255</span>
+                        <div className="flex items-center gap-2">
+                            {currentScene.overlayText.match(/^[12]?\s?[A-Za-z]+\s\d+:\d+/) && (
+                                <span className="text-[8px] bg-primary/20 text-primary px-2 py-0.5 rounded-md animate-pulse">AI Suggested: Scripture Format</span>
+                            )}
+                            <span className="text-primary/60">{currentScene.overlayText.length} / 255</span>
+                        </div>
                     </label>
                     <textarea
                         maxLength={255}
@@ -56,8 +61,8 @@ const BroadcastControl = ({ currentScene, updateScene, timers, isVoiceActive, se
                     <button
                         onClick={() => updateScene({ timerVisible: !currentScene.timerVisible })}
                         className={`group relative overflow-hidden py-5 rounded-2xl border text-[9px] font-black transition-all tracking-[0.2em] uppercase ${currentScene.timerVisible
-                                ? 'bg-primary/20 border-primary/50 text-white shadow-lg'
-                                : 'bg-white/5 border-white/5 text-slate-600'
+                            ? 'bg-primary/20 border-primary/50 text-white shadow-lg'
+                            : 'bg-white/5 border-white/5 text-slate-600'
                             }`}
                     >
                         <div className="relative z-10 flex flex-col items-center gap-2">
