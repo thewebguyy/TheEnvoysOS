@@ -3,8 +3,9 @@
     "version": "1.0.0",
     "scripts": {
         "setup": "npm install && cd server && npm install && cd ../client && npm install",
-        "dev": "node dev.js",
-        "start": "node dev.js"
+        "build": "npm run build --prefix client",
+        "start": "node server/index.js",
+        "dev": "node dev.js"
     },
     "dependencies": {
         "bcryptjs": "^3.0.3",

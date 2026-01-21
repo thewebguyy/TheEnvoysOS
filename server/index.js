@@ -337,10 +337,22 @@ initDB().then(() => {
 
 // Production Serving
 const clientPath = path.join(__dirname, '../client/dist');
-if (fs.pathExistsSync(clientPath)) {
-    app.use(express.static(clientPath));
-    app.get(/.*/, (req, res, next) => {
-        if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) return next();
-        res.sendFile(path.join(clientPath, 'index.html'));
-    });
-}
+
+// Middleware to serve static files
+app.use(express.static(clientPath));
+
+// API and Uploads routing should already be handled, but as a fallback
+// handle all other routes by serving the index.html from dist
+app.get(/^(?!\/api|\/uploads).*/, (req, res) => {
+    // Skip if it looks like an API or uploads request that wasn't caught
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+        return res.status(404).json({ error: 'Not Found' });
+    }
+
+    const indexPath = path.join(clientPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).send('Production build not found. Please run npm run build.');
+    }
+});
