@@ -3,14 +3,31 @@ import { io } from 'socket.io-client';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-// Dynamic host discovery for both local and production
+// Dynamic host discovery
 const isProd = import.meta.env.PROD;
-const BASE_URL = isProd ? window.location.origin : `${window.location.protocol}//${window.location.hostname}:3001`;
+const VITE_API_URL = import.meta.env.VITE_API_URL;
+const BASE_URL = VITE_API_URL || (isProd ? window.location.origin : `http://${window.location.hostname}:3001`);
+
+console.log(`[Store] Initializing connection to: ${BASE_URL}`);
 
 const socket = io(BASE_URL, {
     reconnectionAttempts: 10,
     reconnectionDelay: 1000,
-    timeout: 5000
+    timeout: 10000,
+    transports: ['websocket'],
+    forceNew: true
+});
+
+socket.on('connect', () => {
+    console.log('[Socket] Connected to Envoys Hub:', socket.id);
+});
+
+socket.on('connect_error', (err) => {
+    console.error('[Socket] Connection error:', err.message);
+});
+
+socket.on('reconnect_attempt', (attempt) => {
+    console.log(`[Socket] Reconnection attempt ${attempt}`);
 });
 
 const useStore = create((set, get) => ({

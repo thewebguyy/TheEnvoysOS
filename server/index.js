@@ -28,8 +28,9 @@ const app = express();
 app.use(helmet({
     contentSecurityPolicy: false,
 }));
+app.set('trust proxy', 1);
 app.use(cors({
-    origin: FRONTEND_URL,
+    origin: '*',
     methods: ["GET", "POST", "DELETE"]
 }));
 app.use(express.json());
@@ -39,6 +40,8 @@ const limiter = rateLimit({
     max: 1000
 });
 app.use('/api/', limiter);
+
+app.get('/health', (req, res) => res.status(200).send('OK'));
 
 // Ensure directories exist
 fs.ensureDirSync(uploadDir);
@@ -241,7 +244,12 @@ app.get('/api/info', (req, res) => {
 
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: { origin: FRONTEND_URL, methods: ["GET", "POST"] }
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    },
+    pingTimeout: 60000,
+    pingInterval: 25000
 });
 
 // Precision Ticker
@@ -291,7 +299,12 @@ setInterval(() => {
 }, 60000);
 
 io.on('connection', (socket) => {
+    console.log(`[Socket] New client connected: ${socket.id}`);
     socket.emit('stateUpdate', appState);
+
+    socket.on('disconnect', () => {
+        console.log(`[Socket] Client disconnected: ${socket.id}`);
+    });
 
     socket.on('updateTimer', (data, ack) => {
         try {
