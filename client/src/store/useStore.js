@@ -162,13 +162,13 @@ setInterval(() => {
 
 // Socket Listeners
 socket.on('connect', () => {
-    set({ isConnected: true });
+    useStore.setState({ isConnected: true });
     useStore.getState().fetchMedia();
     toast.success('Connected to Envoys Hub');
 });
 
 socket.on('disconnect', () => {
-    set({ isConnected: false });
+    useStore.setState({ isConnected: false });
     toast.error('Lost connection to Hub.');
 });
 
