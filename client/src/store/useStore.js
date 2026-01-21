@@ -6,16 +6,15 @@ import toast from 'react-hot-toast';
 // Dynamic host discovery
 const isProd = import.meta.env.PROD;
 const VITE_API_URL = import.meta.env.VITE_API_URL;
-const BASE_URL = VITE_API_URL || (isProd ? window.location.origin : `http://${window.location.hostname}:3001`);
+const BASE_URL = VITE_API_URL || (isProd ? '' : `http://${window.location.hostname}:3001`);
 
-console.log(`[Store] Initializing connection to: ${BASE_URL}`);
+console.log(`[Store] Initializing connection${BASE_URL ? ' to: ' + BASE_URL : ' (Same Domain)'}`);
 
 const socket = io(BASE_URL, {
     reconnectionAttempts: 10,
     reconnectionDelay: 1000,
-    timeout: 10000,
-    transports: ['websocket'],
-    forceNew: true
+    timeout: 20000,
+    autoConnect: true
 });
 
 socket.on('connect', () => {

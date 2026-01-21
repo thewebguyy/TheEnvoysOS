@@ -356,9 +356,9 @@ app.use(express.static(clientPath));
 
 // API and Uploads routing should already be handled, but as a fallback
 // handle all other routes by serving the index.html from dist
-app.get(/^(?!\/api|\/uploads).*/, (req, res) => {
-    // Skip if it looks like an API or uploads request that wasn't caught
-    if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+app.get(/^(?!\/api|\/uploads|\/socket\.io).*/, (req, res) => {
+    // Skip if it looks like an API, uploads, or socket request that wasn't caught
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/socket.io')) {
         return res.status(404).json({ error: 'Not Found' });
     }
 
