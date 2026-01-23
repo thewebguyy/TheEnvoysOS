@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -29,7 +30,7 @@ socket.on('reconnect_attempt', (attempt) => {
     console.log(`[Socket] Reconnection attempt ${attempt}`);
 });
 
-const useStore = create((set, get) => ({
+const useStore = create(persist((set, get) => ({
     timers: {
         segment: { duration: 1200, remaining: 1200, running: false, type: 'countdown' },
         target: { targetTime: '12:00', remaining: 0, running: false, type: 'target' },
@@ -153,6 +154,9 @@ const useStore = create((set, get) => ({
             set({ timers: newTimers });
         }
     }
+}), {
+    name: 'envoys-storage',
+    partialize: (state) => ({ timers: state.timers, currentScene: state.currentScene })
 }));
 
 // Local precision interval
@@ -172,9 +176,12 @@ socket.on('disconnect', () => {
     toast.error('Lost connection to Hub.');
 });
 
-socket.on('stateUpdate', (state) => {
+socket.on('stateUpdate', (partialState) => {
     if (!useStore.getState().isSyncing) {
-        useStore.setState({ timers: state.timers, currentScene: state.currentScene });
+        useStore.setState((state) => ({
+            timers: partialState.timers || state.timers,
+            currentScene: partialState.currentScene || state.currentScene
+        }));
     }
 });
 

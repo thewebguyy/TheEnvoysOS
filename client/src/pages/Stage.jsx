@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../store/useStore';
+import { useOutputHardening } from '../hooks/useOutputHardening';
 
 const Stage = () => {
+    useOutputHardening(true);
     const { timers, currentScene } = useStore();
     const [systemTime, setSystemTime] = useState(new Date());
 
@@ -46,11 +48,11 @@ const Stage = () => {
             <div className="grid grid-cols-12 gap-8 flex-1 min-h-0">
                 {/* Large Segment Timer - Critical Visibility */}
                 <div className={`col-span-12 lg:col-span-8 rounded-[4rem] p-16 flex flex-col justify-center relative overflow-hidden border-4 transition-all duration-300 ${timers.segment.remaining < 0 ? 'bg-red-950/20 border-red-500' :
-                        (timers.segment.remaining < 60 ? 'bg-amber-950/20 border-amber-500' : 'bg-white/5 border-white/10')
+                    (timers.segment.remaining < 60 ? 'bg-amber-950/20 border-amber-500' : 'bg-white/5 border-white/10')
                     }`}>
                     <h3 className="text-3xl text-slate-500 font-black uppercase tracking-[0.4em] mb-12">Segment Timer</h3>
                     <div className={`text-[25vw] lg:text-[20vw] font-black leading-none tabular-nums tracking-tighter ${timers.segment.remaining < 0 ? 'text-red-500' :
-                            (timers.segment.remaining < 60 ? 'text-amber-500' : 'text-white')
+                        (timers.segment.remaining < 60 ? 'text-amber-500' : 'text-white')
                         }`}>
                         {formatTime(timers.segment.remaining)}
                     </div>

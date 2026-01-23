@@ -289,7 +289,7 @@ setInterval(() => {
     }
 
     if (changed) {
-        io.emit('stateUpdate', appState);
+        io.emit('stateUpdate', { timers: appState.timers });
     }
 }, 1000);
 
@@ -300,7 +300,7 @@ setInterval(() => {
 
 io.on('connection', (socket) => {
     console.log(`[Socket] New client connected: ${socket.id}`);
-    socket.emit('stateUpdate', appState);
+    socket.emit('stateUpdate', appState); // Initial full state
 
     socket.on('disconnect', () => {
         console.log(`[Socket] Client disconnected: ${socket.id}`);
@@ -309,7 +309,7 @@ io.on('connection', (socket) => {
     socket.on('updateTimer', (data, ack) => {
         try {
             appState.timers = { ...appState.timers, ...data };
-            socket.broadcast.emit('stateUpdate', appState);
+            socket.broadcast.emit('stateUpdate', { timers: appState.timers });
             if (ack) ack({ status: 'ok' });
             saveState();
         } catch (e) {
@@ -320,7 +320,7 @@ io.on('connection', (socket) => {
     socket.on('updateScene', (data, ack) => {
         try {
             appState.currentScene = { ...appState.currentScene, ...data };
-            socket.broadcast.emit('stateUpdate', appState);
+            socket.broadcast.emit('stateUpdate', { currentScene: appState.currentScene });
             if (ack) ack({ status: 'ok' });
             saveState();
         } catch (e) {

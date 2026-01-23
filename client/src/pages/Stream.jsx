@@ -1,8 +1,10 @@
 import React from 'react';
 import useStore from '../store/useStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useOutputHardening } from '../hooks/useOutputHardening';
 
 const Stream = () => {
+    useOutputHardening(true);
     const { timers, currentScene } = useStore();
 
     const formatTime = (seconds) => {

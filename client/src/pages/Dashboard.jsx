@@ -3,6 +3,9 @@ import useStore, { BASE_URL } from '../store/useStore';
 import { Toaster, toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { Monitor, Cast, Sliders, ExternalLink } from 'lucide-react';
+import { useDisplayCount } from '../hooks/useDisplayCount';
+import { displayManager } from '../utils/DisplayManager';
 
 // Components
 import Sidebar from '../components/Sidebar';
@@ -21,6 +24,18 @@ const Dashboard = () => {
     const [uploading, setUploading] = useState(false);
     const [isVoiceActive, setIsVoiceActive] = useState(false);
     const [role, setRole] = useState('admin'); // 'admin' or 'volunteer'
+
+    // Display Management
+    const { displayCount, isSupported, detectDisplays, screens } = useDisplayCount();
+
+    const handleLaunchAll = async () => {
+        if (isSupported && displayCount === 0) {
+            await detectDisplays();
+        }
+        await displayManager.launchAll();
+        toast.success('Launching all outputs...');
+    };
+
 
     // Voice recognition logic
     useEffect(() => {
@@ -133,6 +148,14 @@ const Dashboard = () => {
                                 Emergency Reset
                             </button>
                         )}
+                        <button
+                            onClick={handleLaunchAll}
+                            className="bg-primary/20 hover:bg-primary text-primary hover:text-white border border-primary/20 px-6 py-2.5 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest flex items-center gap-2"
+                        >
+                            <Cast size={14} />
+                            Launch All Outputs
+                        </button>
+
                     </div>
                 </header>
 
@@ -184,28 +207,73 @@ const Dashboard = () => {
                     )}
 
                     {activeTab === 'outputs' && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            {[
-                                { name: 'Audience View', path: '/audience', desc: 'Main projector output' },
-                                { name: 'Stage View', path: '/stage', desc: 'Confidence monitor for speakers' },
-                                { name: 'Stream View', path: '/stream', desc: 'OBS/vMix alpha transparency feed' }
-                            ].map(output => (
-                                <a
-                                    key={output.path}
-                                    href={output.path}
-                                    target="_blank"
-                                    className="glass-card p-8 rounded-[3rem] hover:border-primary/40 transition-all group flex flex-col items-center text-center"
-                                >
-                                    <div className="w-20 h-20 rounded-3xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                        <Monitor size={40} className="text-slate-600 group-hover:text-primary transition-colors" />
+                        <div className="space-y-8">
+                            <div className="glass-card p-8 rounded-[2rem] border border-white/5 bg-gradient-to-br from-white/5 to-transparent">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div>
+                                        <h3 className="text-xl font-black flex items-center gap-3">
+                                            <Monitor className="text-primary" />
+                                            Active Displays: {displayCount > 0 ? displayCount : 'Unknown'}
+                                        </h3>
+                                        <p className="text-slate-500 text-sm mt-1">
+                                            {isSupported
+                                                ? "Browser supports Multi-Screen Window Placement API"
+                                                : "Browser does NOT support Window Placement API. Outputs will open as popup windows."}
+                                        </p>
                                     </div>
-                                    <h3 className="text-xl font-black mb-2">{output.name}</h3>
-                                    <p className="text-sm text-slate-500 font-medium mb-8">{output.desc}</p>
-                                    <div className="px-6 py-3 bg-white/5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:bg-primary group-hover:text-white transition-all">
-                                        Open Output
+                                    {isSupported && (
+                                        <button
+                                            onClick={detectDisplays}
+                                            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors"
+                                        >
+                                            Detect Displays
+                                        </button>
+                                    )}
+                                </div>
+                                {screens.length > 0 && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {screens.map((screen, idx) => (
+                                            <div key={idx} className="p-4 bg-black/20 rounded-xl border border-white/5">
+                                                <p className="font-bold text-xs text-slate-400 uppercase tracking-wider mb-1">Display {idx + 1}</p>
+                                                <p className="font-medium text-sm">{screen.label || `Unknown Display`}</p>
+                                                <p className="text-xs text-slate-500 mt-2">{screen.width}x{screen.height} • {screen.isPrimary ? 'Primary' : 'Extended'}</p>
+                                            </div>
+                                        ))}
                                     </div>
-                                </a>
-                            ))}
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                {[
+                                    { id: 'audience', name: 'Audience View', path: '/audience', desc: 'Main projector output' },
+                                    { id: 'stage', name: 'Stage View', path: '/stage', desc: 'Confidence monitor for speakers' },
+                                    { id: 'stream', name: 'Stream View', path: '/stream', desc: 'OBS/vMix alpha transparency feed' }
+                                ].map((output, idx) => (
+                                    <div
+                                        key={output.path}
+                                        className="glass-card p-8 rounded-[3rem] hover:border-primary/40 transition-all group flex flex-col items-center text-center relative overflow-hidden"
+                                    >
+                                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                                        <div className="w-20 h-20 rounded-3xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                            <Monitor size={40} className="text-slate-600 group-hover:text-primary transition-colors" />
+                                        </div>
+                                        <h3 className="text-xl font-black mb-2">{output.name}</h3>
+                                        <p className="text-sm text-slate-500 font-medium mb-8">{output.desc}</p>
+
+                                        <div className="flex gap-2 w-full">
+                                            <button
+                                                onClick={() => displayManager.launchOutput(output.id, output.path)}
+                                                className="flex-1 px-4 py-3 bg-white/5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:bg-primary group-hover:text-white transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <ExternalLink size={12} />
+                                                Launch
+                                            </button>
+                                            {/* Future: Add selector to assign specific screen */}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
 

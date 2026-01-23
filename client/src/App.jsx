@@ -1,10 +1,13 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
-import Audience from './pages/Audience';
-import Stage from './pages/Stage';
-import Stream from './pages/Stream';
 import { Toaster } from 'react-hot-toast';
 import useStore from './store/useStore';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Audience = lazy(() => import('./pages/Audience'));
+const Stage = lazy(() => import('./pages/Stage'));
+const Stream = lazy(() => import('./pages/Stream'));
+const OBSSetup = lazy(() => import('./pages/OBSSetup'));
 
 function App() {
   const { isConnected } = useStore();
@@ -30,12 +33,22 @@ function App() {
           }}
         />
 
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/audience" element={<Audience />} />
-          <Route path="/stage" element={<Stage />} />
-          <Route path="/stream" element={<Stream />} />
-        </Routes>
+        <Suspense fallback={
+          <div className="flex h-screen w-full items-center justify-center bg-background text-primary">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm font-bold uppercase tracking-widest animate-pulse">Loading...</p>
+            </div>
+          </div>
+        }>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/audience" element={<Audience />} />
+            <Route path="/stage" element={<Stage />} />
+            <Route path="/stream" element={<Stream />} />
+            <Route path="/obs-setup" element={<OBSSetup />} />
+          </Routes>
+        </Suspense>
       </div>
     </Router>
   );
