@@ -44,14 +44,56 @@ const useStore = create(persist((set, get) => ({
         chromaKey: false,
         positions: { timer: 'center', overlay: 'top' }
     },
+    stagedScene: null, // Scene being prepared in Preview Mode
+    previewMode: false,
     media: [],
     storageStats: { usage: 0, quota: 0 },
     isConnected: false,
     isLoading: true,
     isSyncing: false,
-    lastValidState: null,
+    actionQueue: [], // Queue for offline sync
+    undoStack: [],
+    redoStack: [],
+    presets: [],
 
     // Actions
+    savePreset: (name) => {
+        const { currentScene, presets } = get();
+        const newPreset = { id: Date.now(), name, scene: { ...currentScene } };
+        set({ presets: [...presets, newPreset] });
+        toast.success(`Preset "${name}" saved`);
+    },
+
+    loadPreset: (id) => {
+        const { presets } = get();
+        const preset = presets.find(p => p.id === id);
+        if (preset) {
+            get().updateScene(preset.scene);
+            toast.success(`Loaded "${preset.name}"`);
+        }
+    },
+
+    deletePreset: (id) => {
+        set((state) => ({ presets: state.presets.filter(p => p.id !== id) }));
+        toast.success('Preset removed');
+    },
+
+    setPreviewMode: (enabled) => {
+        const { currentScene } = get();
+        set({
+            previewMode: enabled,
+            stagedScene: enabled ? { ...currentScene } : null
+        });
+    },
+
+    goLive: () => {
+        const { stagedScene, previewMode } = get();
+        if (previewMode && stagedScene) {
+            get().updateScene(stagedScene, true); // Force update to live
+            toast.success('Scene is now LIVE');
+        }
+    },
+
     fetchMedia: async () => {
         try {
             const res = await axios.get(`${BASE_URL}/api/media`);
@@ -72,12 +114,30 @@ const useStore = create(persist((set, get) => ({
         }
     },
 
-    updateTimer: async (timerKey, data) => {
+    processQueue: () => {
+        const { actionQueue, isConnected } = get();
+        if (!isConnected || actionQueue.length === 0) return;
+
+        console.log(`[Sync] Processing ${actionQueue.length} queued actions...`);
+        const queue = [...actionQueue];
+        set({ actionQueue: [] });
+
+        queue.forEach(action => {
+            if (action.type === 'scene') get().updateScene(action.data, true);
+            if (action.type === 'timer') get().updateTimer(action.key, action.data, true);
+        });
+    },
+
+    updateTimer: async (timerKey, data, forceLive = false) => {
         const state = get();
+        if (!state.isConnected && !forceLive) {
+            set({ actionQueue: [...state.actionQueue, { type: 'timer', key: timerKey, data }] });
+            toast('Offline: Queuing timer change', { icon: '⏳' });
+        }
+
         const previousTimers = { ...state.timers };
         const newTimers = { ...state.timers, [timerKey]: { ...state.timers[timerKey], ...data } };
 
-        // Optimistic update
         set({ timers: newTimers, isSyncing: true });
 
         socket.emit('updateTimer', { [timerKey]: newTimers[timerKey] }, (response) => {
@@ -89,10 +149,31 @@ const useStore = create(persist((set, get) => ({
         });
     },
 
-    updateScene: (data) => {
+    updateScene: (data, forceLive = false) => {
         const state = get();
+
+        // Handling Preview Mode
+        if (state.previewMode && !forceLive) {
+            set({ stagedScene: { ...state.stagedScene, ...data } });
+            return;
+        }
+
+        // Connection Resilience
+        if (!state.isConnected && !forceLive) {
+            set({ actionQueue: [...state.actionQueue, { type: 'scene', data }] });
+            toast('Offline: Queuing scene change', { icon: '⏳' });
+        }
+
         const previousScene = { ...state.currentScene };
         const newScene = { ...state.currentScene, ...data };
+
+        // Undo Logic
+        if (!forceLive) {
+            set({
+                undoStack: [...state.undoStack, previousScene].slice(-50),
+                redoStack: []
+            });
+        }
 
         set({ currentScene: newScene, isSyncing: true });
 
@@ -103,6 +184,30 @@ const useStore = create(persist((set, get) => ({
                 toast.error('Scene sync failed');
             }
         });
+    },
+
+    undo: () => {
+        const { undoStack, currentScene } = get();
+        if (undoStack.length === 0) return;
+        const prevState = undoStack[undoStack.length - 1];
+        const newUndoStack = undoStack.slice(0, -1);
+        set({
+            undoStack: newUndoStack,
+            redoStack: [...get().redoStack, currentScene]
+        });
+        get().updateScene(prevState, true);
+    },
+
+    redo: () => {
+        const { redoStack, currentScene } = get();
+        if (redoStack.length === 0) return;
+        const nextState = redoStack[redoStack.length - 1];
+        const newRedoStack = redoStack.slice(0, -1);
+        set({
+            redoStack: newRedoStack,
+            undoStack: [...get().undoStack, currentScene]
+        });
+        get().updateScene(nextState, true);
     },
 
     resetAll: () => {
@@ -120,18 +225,8 @@ const useStore = create(persist((set, get) => ({
         const newTimers = { ...timers };
 
         if (newTimers.segment.running) {
-            if (newTimers.segment.behavior === 'stop') {
-                if (newTimers.segment.remaining > 0) {
-                    newTimers.segment.remaining -= 1;
-                    changed = true;
-                } else {
-                    newTimers.segment.running = false;
-                    changed = true;
-                }
-            } else {
-                newTimers.segment.remaining -= 1;
-                changed = true;
-            }
+            newTimers.segment.remaining -= 1;
+            changed = true;
         }
 
         if (newTimers.elapsed.running) {
@@ -159,6 +254,7 @@ const useStore = create(persist((set, get) => ({
     partialize: (state) => ({ timers: state.timers, currentScene: state.currentScene })
 }));
 
+
 // Local precision interval
 setInterval(() => {
     useStore.getState().tick();
@@ -168,6 +264,7 @@ setInterval(() => {
 socket.on('connect', () => {
     useStore.setState({ isConnected: true });
     useStore.getState().fetchMedia();
+    useStore.getState().processQueue();
     toast.success('Connected to Envoys Hub');
 });
 

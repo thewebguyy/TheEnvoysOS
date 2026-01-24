@@ -8,13 +8,16 @@ import {
     Image as ImageIcon,
     Video as VideoIcon,
     HardDrive,
-    Filter
+    Filter,
+    CheckSquare,
+    Square
 } from 'lucide-react';
 import { BASE_URL } from '../store/useStore';
 
-const MediaLibrary = ({ media, storageStats, currentScene, updateScene, deleteMedia, handleUpload, uploading }) => {
+const MediaLibrary = ({ media, storageStats, currentScene, updateScene, deleteMedia, handleUpload, uploading, role }) => {
     const [searchQuery, setSearchQuery] = useState("");
     const [mediaFilter, setMediaFilter] = useState("all");
+    const [selectedItems, setSelectedItems] = useState([]);
 
     const filteredMedia = useMemo(() => {
         return media.filter(item => {
@@ -35,38 +38,55 @@ const MediaLibrary = ({ media, storageStats, currentScene, updateScene, deleteMe
                             <button
                                 key={f}
                                 onClick={() => setMediaFilter(f)}
-                                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${mediaFilter === f ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
+                                className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase transition-all ${mediaFilter === f ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                             >
                                 {f}
                             </button>
                         ))}
                     </div>
+
+                    {selectedItems.length > 0 && role === 'admin' && (
+                        <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-4">
+                            <button
+                                onClick={() => {
+                                    if (window.confirm(`Delete ${selectedItems.length} items?`)) {
+                                        selectedItems.forEach(id => deleteMedia(id));
+                                        setSelectedItems([]);
+                                    }
+                                }}
+                                className="bg-red-500/10 text-red-500 border border-red-500/20 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
+                            >
+                                Bulk Delete ({selectedItems.length})
+                            </button>
+                            <button onClick={() => setSelectedItems([])} className="text-slate-500 hover:text-white text-[10px] font-black uppercase">Cancel</button>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-4 w-full md:w-auto">
                     <div className="relative flex-1 md:flex-none">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={14} />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} strokeWidth={1.5} />
                         <input
                             type="text"
                             placeholder="Search library..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full md:w-64 bg-surface/40 border border-white/5 rounded-xl pl-10 pr-4 py-3 text-xs focus:outline-none focus:border-primary transition-all"
+                            className="w-full md:w-72 bg-surface/40 border border-white/5 rounded-2xl pl-12 pr-4 py-3.5 text-sm focus:outline-none focus:border-primary transition-all placeholder:text-slate-600"
                         />
                     </div>
-                    <label className="bg-primary/20 hover:bg-primary border border-primary/30 text-primary hover:text-white px-6 py-3 rounded-xl text-[10px] font-black cursor-pointer transition-all flex items-center gap-2 shrink-0">
-                        {uploading ? <div className="w-3 h-3 border-2 border-white/30 border-t-white animate-spin rounded-full" /> : <Plus size={16} />}
-                        UPLOAD
+                    <label className="bg-primary/20 hover:bg-primary border border-primary/30 text-primary hover:text-white px-8 py-3.5 rounded-2xl text-[10px] font-black cursor-pointer transition-all flex items-center gap-2 shrink-0 shadow-lg shadow-primary/10">
+                        {uploading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white animate-spin rounded-full" /> : <Plus size={20} strokeWidth={1.5} />}
+                        UPLOAD ASSET
                         <input type="file" className="hidden" onChange={handleUpload} accept="image/*,video/*" disabled={uploading} />
                     </label>
                 </div>
             </div>
 
-            <div className="glass-card flex-1 p-8 rounded-[2.5rem] border border-white/5 relative overflow-hidden flex flex-col min-h-0">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">Global Assets</h2>
-                    <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest flex items-center gap-2">
-                        <HardDrive size={10} /> {(storageStats.usage / 1024 / 1024).toFixed(1)}MB / {(storageStats.quota / 1024 / 1024 / 1024).toFixed(1)}GB USED
+            <div className="glass-card flex-1 rounded-[3rem] border border-white/5 relative overflow-hidden flex flex-col min-h-0">
+                <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300">Global Assets Library</h2>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 bg-black/20 px-4 py-2 rounded-full border border-white/5">
+                        <HardDrive size={14} strokeWidth={1.5} /> {(storageStats.usage / 1024 / 1024).toFixed(1)}MB / {(storageStats.quota / 1024 / 1024 / 1024).toFixed(1)}GB USED
                     </p>
                 </div>
 
@@ -78,7 +98,7 @@ const MediaLibrary = ({ media, storageStats, currentScene, updateScene, deleteMe
                     />
                 </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-8 overflow-y-auto pr-2 custom-scrollbar">
                     <AnimatePresence>
                         {filteredMedia.map(item => (
                             <motion.div
@@ -89,8 +109,20 @@ const MediaLibrary = ({ media, storageStats, currentScene, updateScene, deleteMe
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 draggable
                                 onDragStart={(e) => e.dataTransfer.setData('mediaPath', item.path)}
-                                className={`group relative aspect-video rounded-3xl overflow-hidden border-2 transition-all cursor-grab active:cursor-grabbing ${currentScene.background === item.path ? 'border-primary ring-4 ring-primary/20' : 'border-white/5 hover:border-primary/40'}`}
+                                className={`group relative aspect-video rounded-3xl overflow-hidden border-2 transition-all cursor-grab active:cursor-grabbing ${currentScene.background === item.path ? 'border-primary ring-4 ring-primary/20' : selectedItems.includes(item.id) ? 'border-primary/60' : 'border-white/5 hover:border-primary/40'}`}
                             >
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedItems(prev =>
+                                            prev.includes(item.id) ? prev.filter(i => i !== item.id) : [...prev, item.id]
+                                        );
+                                    }}
+                                    className={`absolute top-3 left-3 z-20 p-1.5 rounded-lg transition-all ${selectedItems.includes(item.id) ? 'bg-primary text-white' : 'bg-black/40 text-white/40 opacity-0 group-hover:opacity-100'}`}
+                                >
+                                    {selectedItems.includes(item.id) ? <CheckSquare size={16} strokeWidth={2} /> : <Square size={16} strokeWidth={2} />}
+                                </button>
+
                                 {item.type.includes('video') ? (
                                     <video src={`${BASE_URL}${item.path}`} className="w-full h-full object-cover" muted loop onMouseEnter={e => e.target.play()} onMouseLeave={e => { e.target.pause(); e.target.currentTime = 0; }} />
                                 ) : (
@@ -106,9 +138,9 @@ const MediaLibrary = ({ media, storageStats, currentScene, updateScene, deleteMe
                                     </button>
                                     <button
                                         onClick={() => deleteMedia(item.id)}
-                                        className="text-red-500/60 hover:text-red-500 p-2 transition-colors"
+                                        className="text-red-500/60 hover:text-red-500 p-2 transition-colors bg-red-500/10 rounded-lg"
                                     >
-                                        <Trash2 size={16} />
+                                        <Trash2 size={20} strokeWidth={1.5} />
                                     </button>
                                 </div>
 

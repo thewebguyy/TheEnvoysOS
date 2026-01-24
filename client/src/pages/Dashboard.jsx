@@ -12,12 +12,13 @@ import Sidebar from '../components/Sidebar';
 import TimerSystem from '../components/TimerSystem';
 import MediaLibrary from '../components/MediaLibrary';
 import BroadcastControl from '../components/BroadcastControl';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const Dashboard = () => {
     const {
-        timers, currentScene, media, storageStats,
+        timers, currentScene, media, storageStats, stagedScene, previewMode,
         updateTimer, updateScene, fetchMedia, deleteMedia, resetAll,
-        isConnected, isSyncing
+        isConnected, isSyncing, setPreviewMode, goLive, undo, redo, actionQueue
     } = useStore();
 
     const [activeTab, setActiveTab] = useState('dashboard');
@@ -36,6 +37,67 @@ const Dashboard = () => {
         toast.success('Launching all outputs...');
     };
 
+
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            // Timer Presets 1-9
+            if (e.key >= '1' && e.key <= '9') {
+                const mins = parseInt(e.key) * 5; // e.g., 1=5min, 2=10min
+                updateTimer('segment', { duration: mins * 60, remaining: mins * 60 });
+                toast.success(`Preset: ${mins} minutes`);
+            }
+
+            // SPACE: Toggle Timer
+            if (e.code === 'Space') {
+                e.preventDefault();
+                updateTimer('segment', { running: !timers.segment.running });
+            }
+
+            // ESC: Clear Scene
+            if (e.key === 'Escape') {
+                updateScene({ background: null, overlayText: '' });
+                toast('Scene Cleared', { icon: '🧹' });
+            }
+
+            // Z / Y: UDP / REDO
+            if (e.ctrlKey && e.key === 'z') {
+                e.preventDefault();
+                undo();
+            }
+            if (e.ctrlKey && e.key === 'y') {
+                e.preventDefault();
+                redo();
+            }
+
+            // P: Preview Mode
+            if (e.key.toLowerCase() === 'p') {
+                setPreviewMode(!previewMode);
+                toast(`Preview Mode: ${!previewMode ? 'ON' : 'OFF'}`);
+            }
+
+            // ?: Shortcuts Overlay
+            if (e.key === '?') {
+                toast((t) => (
+                    <div className="p-4 flex flex-col gap-2">
+                        <p className="font-black text-xs uppercase mb-2 border-b border-white/10 pb-2">Keyboard Shortcuts</p>
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-[10px] font-bold text-slate-400">
+                            <span>Space</span> <span className="text-white">Toggle Timer</span>
+                            <span>1-9</span> <span className="text-white">Timer Presets</span>
+                            <span>Esc</span> <span className="text-white">Clear Scene</span>
+                            <span>Ctrl+Z</span> <span className="text-white">Undo</span>
+                            <span>P</span> <span className="text-white">Preview Mode</span>
+                        </div>
+                    </div>
+                ), { duration: 5000 });
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [timers, previewMode, updateTimer, updateScene, undo, redo, setPreviewMode]);
 
     // Voice recognition logic
     useEffect(() => {
@@ -98,18 +160,28 @@ const Dashboard = () => {
 
     return (
         <div className="min-h-screen bg-background text-slate-200 selection:bg-primary/30 flex overflow-hidden">
-            {/* Global Loader Layer */}
+            {/* Persistent Global Status Bar */}
+            <div className={`fixed top-0 left-0 right-0 z-[60] h-1.5 transition-all duration-500 overflow-hidden ${!isConnected ? 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.5)]' : actionQueue.length > 0 ? 'bg-amber-500' : 'bg-primary'}`}>
+                {actionQueue.length > 0 && (
+                    <motion.div
+                        className="h-full bg-white/40"
+                        animate={{ x: ['-100%', '100%'] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    />
+                )}
+            </div>
+
             <AnimatePresence>
                 {!isConnected && (
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex flex-col items-center justify-center p-8 text-center"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-red-600 text-white px-8 py-4 rounded-2xl z-[100] flex items-center gap-4 shadow-2xl border border-red-400/30"
                     >
-                        <div className="w-24 h-24 rounded-full border-t-2 border-primary animate-spin mb-8" />
-                        <h2 className="text-3xl font-black mb-2 tracking-tighter">CONNECTION LOST</h2>
-                        <p className="text-slate-500 max-w-sm font-medium">Reconnecting to Lagos Local Hub...</p>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white animate-spin rounded-full" />
+                        <div className="text-left">
+                            <h3 className="text-xs font-black uppercase tracking-widest">Connection Lost</h3>
+                            <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Offline — Queuing Changes ({actionQueue.length})</p>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -130,60 +202,92 @@ const Dashboard = () => {
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        {isSyncing && (
-                            <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full border border-primary/20">
-                                <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                                <span className="text-[8px] font-black text-primary uppercase tracking-widest">Syncing</span>
-                            </div>
+                    <div className="flex items-center gap-6">
+                        {/* Miniature Output Previews */}
+                        <div className="hidden xl:flex items-center gap-4 bg-black/20 p-2 rounded-2xl border border-white/5">
+                            {['audience', 'stage', 'stream'].map(id => (
+                                <div key={id} className="relative w-24 aspect-video rounded-lg overflow-hidden border border-white/10 group">
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                        <Monitor size={12} className="text-slate-500" />
+                                    </div>
+                                    <div className="absolute top-1 left-2 text-[6px] font-black uppercase text-white/40 tracking-widest">{id}</div>
+                                    {/* Mock live feedback */}
+                                    <div className="absolute bottom-1 right-2 w-1 h-1 rounded-full bg-primary animate-pulse" />
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex bg-surface/50 p-1.5 rounded-2xl border border-white/5">
+                            <button
+                                onClick={() => setPreviewMode(false)}
+                                className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all tracking-widest ${!previewMode ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                Live
+                            </button>
+                            <button
+                                onClick={() => setPreviewMode(true)}
+                                className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all tracking-widest ${previewMode ? 'bg-amber-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                Preview
+                            </button>
+                        </div>
+
+                        {previewMode && (
+                            <button
+                                onClick={goLive}
+                                className="bg-green-600 hover:bg-green-500 text-white px-8 py-3 rounded-2xl text-[10px] font-black transition-all uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-green-500/20 active:scale-95"
+                            >
+                                <Zap size={16} strokeWidth={1.5} fill="white" />
+                                GO LIVE
+                            </button>
                         )}
+
                         {role === 'admin' && (
                             <button
                                 onClick={() => {
-                                    if (window.confirm("CRITICAL: Reset all active timers?")) resetAll();
+                                    if (window.confirm("CRITICAL: Reset all active timers? This cannot be undone.")) resetAll();
                                 }}
-                                className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-6 py-2.5 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest"
+                                className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-6 py-3 rounded-2xl text-[10px] font-black transition-all uppercase tracking-widest"
                                 aria-label="Emergency System Reset"
                             >
                                 Emergency Reset
                             </button>
                         )}
-                        <button
-                            onClick={handleLaunchAll}
-                            className="bg-primary/20 hover:bg-primary text-primary hover:text-white border border-primary/20 px-6 py-2.5 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest flex items-center gap-2"
-                        >
-                            <Cast size={14} />
-                            Launch All Outputs
-                        </button>
-
                     </div>
                 </header>
 
                 <div className="h-[calc(100vh-140px)]">
                     {activeTab === 'dashboard' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
-                            <div className="lg:col-span-8 flex flex-col gap-8 min-h-0">
-                                <TimerSystem timers={timers} updateTimer={updateTimer} />
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 h-full">
+                            <div className="lg:col-span-8 flex flex-col gap-10 min-h-0">
+                                <ErrorBoundary>
+                                    <TimerSystem timers={timers} updateTimer={updateTimer} />
+                                </ErrorBoundary>
                                 <div className="flex-1 min-h-0">
-                                    <MediaLibrary
-                                        media={media}
-                                        storageStats={storageStats}
-                                        currentScene={currentScene}
-                                        updateScene={updateScene}
-                                        deleteMedia={role === 'admin' ? deleteMedia : null}
-                                        handleUpload={handleUpload}
-                                        uploading={uploading}
-                                    />
+                                    <ErrorBoundary>
+                                        <MediaLibrary
+                                            media={media}
+                                            storageStats={storageStats}
+                                            currentScene={previewMode ? stagedScene : currentScene}
+                                            updateScene={updateScene}
+                                            deleteMedia={role === 'admin' ? deleteMedia : null}
+                                            handleUpload={handleUpload}
+                                            uploading={uploading}
+                                        />
+                                    </ErrorBoundary>
                                 </div>
                             </div>
                             <div className="lg:col-span-4 h-full">
-                                <BroadcastControl
-                                    currentScene={currentScene}
-                                    updateScene={updateScene}
-                                    timers={timers}
-                                    isVoiceActive={isVoiceActive}
-                                    setIsVoiceActive={setIsVoiceActive}
-                                />
+                                <ErrorBoundary>
+                                    <BroadcastControl
+                                        currentScene={previewMode ? stagedScene : currentScene}
+                                        updateScene={updateScene}
+                                        timers={timers}
+                                        isVoiceActive={isVoiceActive}
+                                        setIsVoiceActive={setIsVoiceActive}
+                                        previewMode={previewMode}
+                                    />
+                                </ErrorBoundary>
                             </div>
                         </div>
                     )}
