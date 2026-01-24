@@ -83,9 +83,9 @@ const MediaLibrary = ({ media, storageStats, currentScene, updateScene, deleteMe
             </div>
 
             <div className="glass-card flex-1 rounded-[3rem] border border-white/5 relative overflow-hidden flex flex-col min-h-0">
-                <div className="flex justify-between items-center mb-8">
-                    <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300">Global Assets Library</h2>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 bg-black/20 px-4 py-2 rounded-full border border-white/5">
+                <div className="flex justify-between items-center mb-8 px-2">
+                    <h2 className="text-xs font-black uppercase tracking-[0.4em] text-slate-300">Global Assets Library</h2>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 bg-black/20 px-4 py-2 rounded-full border border-white/5">
                         <HardDrive size={14} strokeWidth={1.5} /> {(storageStats.usage / 1024 / 1024).toFixed(1)}MB / {(storageStats.quota / 1024 / 1024 / 1024).toFixed(1)}GB USED
                     </p>
                 </div>

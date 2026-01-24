@@ -188,21 +188,21 @@ const Dashboard = () => {
 
             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-            <main className="flex-1 ml-20 lg:ml-64 p-6 lg:p-10 h-screen overflow-y-auto custom-scrollbar">
-                <header className="flex justify-between items-center mb-10">
+            <main className="flex-1 ml-20 lg:ml-72 p-6 lg:p-10 h-screen overflow-y-auto custom-scrollbar">
+                <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-10">
                     <div>
-                        <h2 className="text-2xl font-black tracking-tighter uppercase">
+                        <h2 className="text-2xl lg:text-3xl font-black tracking-tight uppercase leading-none">
                             {activeTab === 'dashboard' ? 'Control Hub' :
                                 activeTab === 'media' ? 'Media Library' :
                                     activeTab === 'timers' ? 'Timer System' :
                                         activeTab === 'outputs' ? 'Output Routing' : 'Settings'}
                         </h2>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">
+                        <p className="text-[10px] lg:text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mt-2">
                             {isConnected ? 'System Synchronized' : 'Offline Mode'} • v1.5.0 STABLE
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex flex-wrap items-center gap-4 lg:gap-6 w-full xl:w-auto">
                         {/* Miniature Output Previews */}
                         <div className="hidden xl:flex items-center gap-4 bg-black/20 p-2 rounded-2xl border border-white/5">
                             {['audience', 'stage', 'stream'].map(id => (

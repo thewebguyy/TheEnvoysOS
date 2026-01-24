@@ -59,11 +59,11 @@ const CircularTimer = ({ value, max, title, running, onToggle, onReset, onSet, c
                 </button>
             </div>
 
-            <div className="relative w-56 h-56 flex items-center justify-center">
+            <div className="relative w-48 h-48 flex items-center justify-center scale-95 lg:scale-100">
                 <svg className="w-full h-full -rotate-90 transform">
-                    <circle cx="112" cy="112" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" className="text-white/5" />
+                    <circle cx="96" cy="96" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" className="text-white/5" />
                     <motion.circle
-                        cx="112" cy="112" r={radius} stroke={getStrokeColor()} strokeWidth="10" fill="transparent"
+                        cx="96" cy="96" r={radius} stroke={getStrokeColor()} strokeWidth="10" fill="transparent"
                         strokeDasharray={circumference}
                         initial={{ strokeDashoffset: circumference }}
                         animate={{ strokeDashoffset }}
@@ -72,10 +72,10 @@ const CircularTimer = ({ value, max, title, running, onToggle, onReset, onSet, c
                     />
                 </svg>
                 <div className="absolute flex flex-col items-center justify-center">
-                    <span className={`text-5xl font-black tabular-nums tracking-tighter ${value < 60 && value > 0 && running ? 'text-red-500 animate-pulse' : 'text-white'}`}>
+                    <span className={`text-4xl lg:text-5xl font-black tabular-nums tracking-tighter ${value < 60 && value > 0 && running ? 'text-red-500 animate-pulse' : 'text-white'}`}>
                         {formatTime(value)}
                     </span>
-                    {running && <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">Active Production</span>}
+                    {running && <span className="text-[8px] lg:text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">Active Production</span>}
                 </div>
             </div>
 
@@ -127,7 +127,7 @@ const CircularTimer = ({ value, max, title, running, onToggle, onReset, onSet, c
 
 const TimerSystem = ({ timers, updateTimer }) => {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
             <CircularTimer
                 title="Main Event"
                 value={timers.segment.remaining}
@@ -143,7 +143,7 @@ const TimerSystem = ({ timers, updateTimer }) => {
                     <Target size={20} strokeWidth={1.5} className="text-secondary" />
                     <h3 className="text-[11px] font-black text-slate-300 uppercase tracking-[0.3em]">Service Target</h3>
                 </div>
-                <div className="text-7xl font-black text-white tabular-nums tracking-tighter mb-6 leading-none">
+                <div className="text-5xl lg:text-7xl font-black text-white tabular-nums tracking-tighter mb-6 leading-none">
                     {timers.target.targetTime}
                 </div>
                 <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-black/20 p-4 rounded-2xl">
@@ -165,7 +165,7 @@ const TimerSystem = ({ timers, updateTimer }) => {
                     <TimerIcon size={20} strokeWidth={1.5} className="text-slate-400" />
                     <h3 className="text-[11px] font-black text-slate-300 uppercase tracking-[0.3em]">Session Elapsed</h3>
                 </div>
-                <div className="text-7xl font-black text-slate-300 tabular-nums tracking-tighter mb-6 leading-none">
+                <div className="text-5xl lg:text-7xl font-black text-slate-300 tabular-nums tracking-tighter mb-6 leading-none">
                     {Math.floor(timers.elapsed.seconds / 60).toString().padStart(2, '0')}:{(timers.elapsed.seconds % 60).toString().padStart(2, '0')}
                 </div>
                 <button

@@ -175,17 +175,17 @@ const BroadcastControl = ({ currentScene, updateScene, timers, isVoiceActive, se
                     </div>
 
                     {/* Overlays */}
-                    <div className="relative z-10 w-full h-full flex flex-col items-center justify-center p-10 text-center bg-black/20 backdrop-blur-[1px]">
+                    <div className="relative z-10 w-full h-full flex flex-col items-center justify-center p-6 lg:p-10 text-center bg-black/20 backdrop-blur-[1px]">
                         <motion.p
                             layout
-                            className="text-sm font-black text-white uppercase tracking-[0.3em] mb-6 drop-shadow-2xl"
+                            className="text-[10px] lg:text-sm font-black text-white uppercase tracking-[0.3em] mb-4 lg:mb-6 drop-shadow-2xl"
                         >
                             {currentScene.overlayText || (previewMode ? "PREPARING..." : "SIGNAL ACTIVE")}
                         </motion.p>
                         {currentScene.timerVisible && (
                             <motion.p
                                 layout
-                                className="text-6xl font-black text-white tabular-nums tracking-tighter drop-shadow-[0_8px_24px_rgba(0,0,0,0.9)]"
+                                className="text-4xl lg:text-6xl font-black text-white tabular-nums tracking-tighter drop-shadow-[0_8px_24px_rgba(0,0,0,0.9)]"
                             >
                                 {formatTime(timers.segment.remaining)}
                             </motion.p>

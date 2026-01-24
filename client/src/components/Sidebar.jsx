@@ -27,7 +27,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                     <Zap size={24} strokeWidth={1.5} className="text-white" fill="white" />
                 </div>
                 <div className="hidden lg:block overflow-hidden whitespace-nowrap">
-                    <h1 className="text-2xl font-black tracking-tighter leading-none">ENVOYS<span className="text-primary italic">OS</span></h1>
+                    <h1 className="text-2xl font-black tracking-tight leading-none">ENVOYS<span className="text-primary italic">OS</span></h1>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">Live Production</p>
                 </div>
             </div>
