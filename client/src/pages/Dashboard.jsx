@@ -3,7 +3,7 @@ import useStore, { BASE_URL } from '../store/useStore';
 import { Toaster, toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import { Monitor, Cast, Sliders, ExternalLink } from 'lucide-react';
+import { Monitor, Cast, Sliders, ExternalLink, Zap, Keyboard, HelpCircle, Download, LogIn, LogOut } from 'lucide-react';
 import { useDisplayCount } from '../hooks/useDisplayCount';
 import { displayManager } from '../utils/DisplayManager';
 
@@ -29,13 +29,11 @@ const Dashboard = () => {
     // Display Management
     const { displayCount, isSupported, detectDisplays, screens } = useDisplayCount();
 
-    const handleLaunchAll = async () => {
-        if (isSupported && displayCount === 0) {
-            await detectDisplays();
-        }
-        await displayManager.launchAll();
-        toast.success('Launching all outputs...');
-    };
+    const [speechSupported, setSpeechSupported] = useState(false);
+
+    useEffect(() => {
+        setSpeechSupported('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+    }, []);
 
 
     // Keyboard Shortcuts
@@ -174,13 +172,18 @@ const Dashboard = () => {
             <AnimatePresence>
                 {!isConnected && (
                     <motion.div
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-red-600 text-white px-8 py-4 rounded-2xl z-[100] flex items-center gap-4 shadow-2xl border border-red-400/30"
+                        initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                        className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-red-600 text-white px-8 py-6 rounded-3xl z-[100] flex flex-col gap-2 shadow-[0_20px_50px_rgba(239,68,68,0.4)] border border-red-400/30 min-w-[350px]"
                     >
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white animate-spin rounded-full" />
-                        <div className="text-left">
-                            <h3 className="text-xs font-black uppercase tracking-widest">Connection Lost</h3>
-                            <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Offline — Queuing Changes ({actionQueue.length})</p>
+                        <div className="flex items-center gap-4">
+                            <div className="w-6 h-6 border-2 border-white/30 border-t-white animate-spin rounded-full" />
+                            <div className="text-left">
+                                <h3 className="text-sm font-black uppercase tracking-widest">Connection Lost</h3>
+                                <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Changes Queued: {actionQueue.length}</p>
+                            </div>
+                        </div>
+                        <div className="bg-red-700/50 p-3 rounded-xl text-[9px] font-bold uppercase tracking-wider text-red-100">
+                            Offline: Uploads disabled. Layout changes will sync automatically on reconnect.
                         </div>
                     </motion.div>
                 )}
@@ -197,7 +200,7 @@ const Dashboard = () => {
                                     activeTab === 'timers' ? 'Timer System' :
                                         activeTab === 'outputs' ? 'Output Routing' : 'Settings'}
                         </h2>
-                        <p className="text-[10px] lg:text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mt-2">
+                        <p className="text-[10px] lg:text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mt-2">
                             {isConnected ? 'System Synchronized' : 'Offline Mode'} • v1.5.0 STABLE
                         </p>
                     </div>
@@ -208,7 +211,7 @@ const Dashboard = () => {
                             {['audience', 'stage', 'stream'].map(id => (
                                 <div key={id} className="relative w-24 aspect-video rounded-lg overflow-hidden border border-white/10 group">
                                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                        <Monitor size={12} className="text-slate-500" />
+                                        <Monitor size={12} className="text-slate-400" />
                                     </div>
                                     <div className="absolute top-1 left-2 text-[6px] font-black uppercase text-white/40 tracking-widest">{id}</div>
                                     {/* Mock live feedback */}
@@ -217,6 +220,26 @@ const Dashboard = () => {
                             ))}
                         </div>
 
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={() => toast((t) => (
+                                    <div className="p-4 flex flex-col gap-2">
+                                        <p className="font-black text-xs uppercase mb-2 border-b border-white/10 pb-2">Keyboard Shortcuts</p>
+                                        <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-[10px] font-bold text-slate-400">
+                                            <span>Space</span> <span className="text-white">Toggle Timer</span>
+                                            <span>1-9</span> <span className="text-white">Timer Presets</span>
+                                            <span>Esc</span> <span className="text-white">Clear Scene</span>
+                                            <span>Ctrl+Z</span> <span className="text-white">Undo/Redo</span>
+                                            <span>P</span> <span className="text-white">Preview Mode</span>
+                                        </div>
+                                    </div>
+                                ), { icon: '⌨️', duration: 5000 })}
+                                className="p-3 bg-white/5 border border-white/5 rounded-2xl text-slate-400 hover:text-primary transition-all group relative"
+                            >
+                                <Keyboard size={20} strokeWidth={1.5} />
+                                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-black text-[8px] font-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Shortcuts (?)</span>
+                            </button>
+                        </div>
                         <div className="flex bg-surface/50 p-1.5 rounded-2xl border border-white/5">
                             <button
                                 onClick={() => setPreviewMode(false)}
@@ -317,12 +340,12 @@ const Dashboard = () => {
                                     <div>
                                         <h3 className="text-xl font-black flex items-center gap-3">
                                             <Monitor className="text-primary" />
-                                            Active Displays: {displayCount > 0 ? displayCount : 'Unknown'}
+                                            Active Displays: {displayCount === -1 ? 'Not Supported' : displayCount > 0 ? displayCount : 'None Detected'}
                                         </h3>
-                                        <p className="text-slate-500 text-sm mt-1">
+                                        <p className="text-slate-400 text-sm mt-1">
                                             {isSupported
                                                 ? "Browser supports Multi-Screen Window Placement API"
-                                                : "Browser does NOT support Window Placement API. Outputs will open as popup windows."}
+                                                : "Single Display Mode: Browser does NOT support Window Placement API. Outputs will open as popup windows."}
                                         </p>
                                     </div>
                                     {isSupported && (
@@ -340,7 +363,7 @@ const Dashboard = () => {
                                             <div key={idx} className="p-4 bg-black/20 rounded-xl border border-white/5">
                                                 <p className="font-bold text-xs text-slate-400 uppercase tracking-wider mb-1">Display {idx + 1}</p>
                                                 <p className="font-medium text-sm">{screen.label || `Unknown Display`}</p>
-                                                <p className="text-xs text-slate-500 mt-2">{screen.width}x{screen.height} • {screen.isPrimary ? 'Primary' : 'Extended'}</p>
+                                                <p className="text-xs text-slate-400 mt-2">{screen.width}x{screen.height} • {screen.isPrimary ? 'Primary' : 'Extended'}</p>
                                             </div>
                                         ))}
                                     </div>
@@ -363,12 +386,12 @@ const Dashboard = () => {
                                             <Monitor size={40} className="text-slate-600 group-hover:text-primary transition-colors" />
                                         </div>
                                         <h3 className="text-xl font-black mb-2">{output.name}</h3>
-                                        <p className="text-sm text-slate-500 font-medium mb-8">{output.desc}</p>
+                                        <p className="text-sm text-slate-400 font-medium mb-8">{output.desc}</p>
 
                                         <div className="flex gap-2 w-full">
                                             <button
                                                 onClick={() => displayManager.launchOutput(output.id, output.path)}
-                                                className="flex-1 px-4 py-3 bg-white/5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:bg-primary group-hover:text-white transition-all flex items-center justify-center gap-2"
+                                                className="flex-1 px-4 py-3 bg-white/5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 group-hover:bg-primary group-hover:text-white transition-all flex items-center justify-center gap-2"
                                             >
                                                 <ExternalLink size={12} />
                                                 Launch
@@ -382,46 +405,70 @@ const Dashboard = () => {
                     )}
 
                     {activeTab === 'settings' && (
-                        <div className="glass-card p-10 rounded-[3rem] max-w-2xl border border-white/5">
-                            <h3 className="text-xl font-black mb-8 italic">System Configuration</h3>
-                            <div className="space-y-6">
-                                <div className="flex justify-between items-center p-6 bg-white/5 rounded-3xl">
-                                    <div>
-                                        <p className="font-bold text-sm">Chroma Key Mode</p>
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black mt-1">For Green Screen Overlays</p>
+                        <div className="space-y-8">
+                            <div className="glass-card p-10 rounded-[3rem] max-w-2xl border border-white/5 bg-gradient-to-br from-white/5 to-transparent">
+                                <h3 className="text-xl font-black mb-8 italic">System Configuration</h3>
+                                <div className="space-y-6">
+                                    <div className="flex justify-between items-center p-6 bg-white/5 rounded-3xl">
+                                        <div>
+                                            <p className="font-bold text-sm">Operator Authentication</p>
+                                            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mt-1">
+                                                {role === 'admin' ? 'Logged in as Administrator' : 'Running in Volunteer Mode'}
+                                            </p>
+                                        </div>
+                                        {role === 'admin' ? (
+                                            <button
+                                                onClick={() => useStore.getState().logout()}
+                                                className="px-6 py-3 bg-red-500/10 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+                                            >
+                                                <LogOut size={16} /> LOGOUT
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => {
+                                                    const pw = prompt("Enter Admin Password:");
+                                                    if (pw) useStore.getState().login(pw);
+                                                }}
+                                                className="px-6 py-3 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+                                            >
+                                                <LogIn size={16} /> ADMIN LOGIN
+                                            </button>
+                                        )}
                                     </div>
-                                    <button
-                                        onClick={() => updateScene({ chromaKey: !currentScene.chromaKey })}
-                                        className={`w-14 h-8 rounded-full transition-colors relative ${currentScene.chromaKey ? 'bg-primary' : 'bg-slate-700'}`}
-                                    >
-                                        <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${currentScene.chromaKey ? 'right-1' : 'left-1'}`} />
-                                    </button>
-                                </div>
-                                <div className="flex justify-between items-center p-6 bg-white/5 rounded-3xl">
-                                    <div>
-                                        <p className="font-bold text-sm">Active User Role</p>
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black mt-1">Permission Level</p>
+
+                                    <div className="flex justify-between items-center p-6 bg-white/5 rounded-3xl">
+                                        <div>
+                                            <p className="font-bold text-sm">Chroma Key Mode</p>
+                                            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mt-1">For Green Screen Overlays</p>
+                                        </div>
+                                        <button
+                                            onClick={() => updateScene({ chromaKey: !currentScene.chromaKey })}
+                                            className={`w-14 h-8 rounded-full transition-colors relative ${currentScene.chromaKey ? 'bg-primary' : 'bg-slate-700'}`}
+                                        >
+                                            <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${currentScene.chromaKey ? 'right-1' : 'left-1'}`} />
+                                        </button>
                                     </div>
-                                    <select
-                                        value={role}
-                                        onChange={(e) => setRole(e.target.value)}
-                                        className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs focus:outline-none"
-                                    >
-                                        <option value="admin">Administrator (Full)</option>
-                                        <option value="volunteer">Volunteer (Limited)</option>
-                                    </select>
-                                </div>
-                                <div className="flex justify-between items-center p-6 bg-white/5 rounded-3xl">
-                                    <div>
-                                        <p className="font-bold text-sm">Global Language</p>
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black mt-1">Currently: English (US)</p>
+
+                                    <div className="flex justify-between items-center p-6 bg-white/5 rounded-3xl">
+                                        <div>
+                                            <p className="font-bold text-sm">Data & Maintenance</p>
+                                            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mt-1">Export local state for backup</p>
+                                        </div>
+                                        <button
+                                            onClick={async () => {
+                                                const state = useStore.getState();
+                                                const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+                                                const url = URL.createObjectURL(blob);
+                                                const a = document.createElement('a');
+                                                a.href = url;
+                                                a.download = `EnvoysOS_Config_${new Date().toISOString().split('T')[0]}.json`;
+                                                a.click();
+                                            }}
+                                            className="px-6 py-3 bg-white/5 text-slate-400 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-white/5"
+                                        >
+                                            <Download size={16} /> Export State
+                                        </button>
                                     </div>
-                                    <select className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs focus:outline-none">
-                                        <option>English</option>
-                                        <option>Yoruba</option>
-                                        <option>Igbo</option>
-                                        <option>Hausa</option>
-                                    </select>
                                 </div>
                             </div>
                         </div>

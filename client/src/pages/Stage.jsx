@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../store/useStore';
+import { motion } from 'framer-motion';
 import { useOutputHardening } from '../hooks/useOutputHardening';
 
 const Stage = () => {
@@ -33,7 +34,7 @@ const Stage = () => {
                         <div className="px-3 py-1 bg-primary text-black text-xs font-black rounded-lg">ENVOYS OS v2.0</div>
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Lagos Local Active</span>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Lagos Local Active</span>
                         </div>
                     </div>
                 </div>
@@ -50,7 +51,7 @@ const Stage = () => {
                 <div className={`col-span-12 lg:col-span-8 rounded-[4rem] p-16 flex flex-col justify-center relative overflow-hidden border-4 transition-all duration-300 ${timers.segment.remaining < 0 ? 'bg-red-950/20 border-red-500' :
                     (timers.segment.remaining < 60 ? 'bg-amber-950/20 border-amber-500' : 'bg-white/5 border-white/10')
                     }`}>
-                    <h3 className="text-3xl text-slate-500 font-black uppercase tracking-[0.4em] mb-12">Segment Timer</h3>
+                    <h3 className="text-3xl text-slate-400 font-black uppercase tracking-[0.4em] mb-12">Segment Timer</h3>
                     <div className={`text-[25vw] lg:text-[20vw] font-black leading-none tabular-nums tracking-tighter ${timers.segment.remaining < 0 ? 'text-red-500' :
                         (timers.segment.remaining < 60 ? 'text-amber-500' : 'text-white')
                         }`}>
@@ -67,7 +68,7 @@ const Stage = () => {
 
                 {/* Notes & Prompts */}
                 <div className="col-span-12 lg:col-span-4 bg-white/5 rounded-[4rem] p-12 lg:p-16 border-4 border-white/10 flex flex-col">
-                    <h3 className="text-3xl text-slate-500 font-black uppercase tracking-[0.4em] mb-12">Scripture / Notes</h3>
+                    <h3 className="text-3xl text-slate-400 font-black uppercase tracking-[0.4em] mb-12">Scripture / Notes</h3>
                     <div className="text-4xl lg:text-5xl font-bold text-slate-200 leading-tight flex-1 flex flex-col justify-center whitespace-pre-wrap italic opacity-90">
                         {currentScene.overlayText || "SIGNAL READY"}
                     </div>
@@ -77,15 +78,15 @@ const Stage = () => {
             {/* Bottom Status Row */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8 h-40">
                 <div className="bg-white/5 rounded-[2.5rem] p-8 border-4 border-white/10 flex flex-col items-center justify-center">
-                    <p className="text-sm text-slate-500 font-black uppercase tracking-widest mb-2">Target Ending</p>
+                    <p className="text-sm text-slate-400 font-black uppercase tracking-widest mb-2">Target Ending</p>
                     <p className="text-5xl lg:text-6xl font-black text-secondary">{timers.target.targetTime}</p>
                 </div>
                 <div className="bg-white/5 rounded-[2.5rem] p-8 border-4 border-white/10 flex flex-col items-center justify-center">
-                    <p className="text-sm text-slate-500 font-black uppercase tracking-widest mb-2">Remaining</p>
+                    <p className="text-sm text-slate-400 font-black uppercase tracking-widest mb-2">Remaining</p>
                     <p className="text-5xl lg:text-6xl font-black text-secondary tabular-nums">{formatTime(timers.target.remaining)}</p>
                 </div>
                 <div className="bg-white/5 rounded-[2.5rem] p-8 border-4 border-white/10 flex flex-col items-center justify-center">
-                    <p className="text-sm text-slate-500 font-black uppercase tracking-widest mb-2">Total Service</p>
+                    <p className="text-sm text-slate-400 font-black uppercase tracking-widest mb-2">Total Service</p>
                     <p className="text-5xl lg:text-6xl font-black text-slate-300 tabular-nums">{formatTime(timers.elapsed.seconds)}</p>
                 </div>
                 <div className="bg-primary/20 rounded-[2.5rem] p-8 border-4 border-primary/40 flex flex-col items-center justify-center">

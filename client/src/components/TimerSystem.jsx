@@ -26,6 +26,13 @@ const CircularTimer = ({ value, max, title, running, onToggle, onReset, onSet, c
         if (typeof val === 'number') {
             totalSec = val;
         } else {
+            // Support formats like MM, MM:SS, HH:MM:SS
+            const timePattern = /^(\d{1,2})(:[0-5]?\d)?(:[0-5]?\d)?$/;
+            if (!timePattern.test(val)) {
+                toast.error("Format: MM:SS or HH:MM:SS (e.g., 05:00)");
+                return;
+            }
+
             const parts = val.split(':').reverse();
             if (parts[0]) totalSec += parseInt(parts[0]);
             if (parts[1]) totalSec += parseInt(parts[1]) * 60;
@@ -36,8 +43,6 @@ const CircularTimer = ({ value, max, title, running, onToggle, onReset, onSet, c
             onSet(totalSec);
             setIsEditing(false);
             setInput("");
-        } else if (typeof val === 'string') {
-            toast.error("Format: MM:SS or HH:MM:SS");
         }
     };
 

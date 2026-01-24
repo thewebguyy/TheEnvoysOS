@@ -44,5 +44,10 @@ export function useDisplayCount() {
         return currentScreens.length;
     };
 
-    return { displayCount, isSupported, detectDisplays, screens };
+    return {
+        displayCount: isSupported ? displayCount : -1,
+        isSupported,
+        detectDisplays,
+        screens
+    };
 }

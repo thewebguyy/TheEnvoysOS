@@ -12,8 +12,10 @@ const BASE_URL = VITE_API_URL || (isProd ? '' : `http://${window.location.hostna
 console.log(`[Store] Initializing connection${BASE_URL ? ' to: ' + BASE_URL : ' (Same Domain)'}`);
 
 const socket = io(BASE_URL, {
-    reconnectionAttempts: 10,
+    reconnectionAttempts: 20,
     reconnectionDelay: 1000,
+    reconnectionDelayMax: 30000,
+    randomizationFactor: 0.5,
     timeout: 20000,
     autoConnect: true
 });
@@ -44,21 +46,47 @@ const useStore = create(persist((set, get) => ({
         chromaKey: false,
         positions: { timer: 'center', overlay: 'top' }
     },
-    stagedScene: null, // Scene being prepared in Preview Mode
+    stagedScene: null,
     previewMode: false,
+    otherOperatorStaging: null, // { userId, changeType }
     media: [],
     storageStats: { usage: 0, quota: 0 },
     isConnected: false,
     isLoading: true,
     isSyncing: false,
-    actionQueue: [], // Queue for offline sync
+    actionQueue: [],
     undoStack: [],
     redoStack: [],
     presets: [],
+    token: null,
+    role: 'volunteer',
+    schemaVersion: 2,
 
-    // Actions
+    // Auth Actions
+    login: async (password) => {
+        try {
+            const res = await axios.post(`${BASE_URL}/api/login`, { password });
+            set({ token: res.data.token, role: res.data.role });
+            toast.success('Administrator access granted');
+            get().fetchMedia();
+            return true;
+        } catch (err) {
+            toast.error('Invalid password');
+            return false;
+        }
+    },
+
+    logout: () => {
+        set({ token: null, role: 'volunteer' });
+        toast('Logged out to Volunteer mode');
+    },
+
     savePreset: (name) => {
         const { currentScene, presets } = get();
+        if (presets.find(p => p.name.toLowerCase() === name.toLowerCase())) {
+            toast.error('Duplicate name - please choose a unique one');
+            return;
+        }
         const newPreset = { id: Date.now(), name, scene: { ...currentScene } };
         set({ presets: [...presets, newPreset] });
         toast.success(`Preset "${name}" saved`);
@@ -84,12 +112,17 @@ const useStore = create(persist((set, get) => ({
             previewMode: enabled,
             stagedScene: enabled ? { ...currentScene } : null
         });
+        if (enabled) {
+            socket.emit('stagingChange', { active: true });
+        } else {
+            socket.emit('stagingChange', { active: false });
+        }
     },
 
     goLive: () => {
         const { stagedScene, previewMode } = get();
         if (previewMode && stagedScene) {
-            get().updateScene(stagedScene, true); // Force update to live
+            get().updateScene(stagedScene, true);
             toast.success('Scene is now LIVE');
         }
     },
@@ -106,8 +139,12 @@ const useStore = create(persist((set, get) => ({
     },
 
     deleteMedia: async (id) => {
+        const { token } = get();
+        if (!token) return toast.error('Admin permission required');
         try {
-            await axios.delete(`${BASE_URL}/api/media/${id}`);
+            await axios.delete(`${BASE_URL}/api/media/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             toast.success('Media deleted');
         } catch (err) {
             toast.error('Failed to delete media');
@@ -118,7 +155,6 @@ const useStore = create(persist((set, get) => ({
         const { actionQueue, isConnected } = get();
         if (!isConnected || actionQueue.length === 0) return;
 
-        console.log(`[Sync] Processing ${actionQueue.length} queued actions...`);
         const queue = [...actionQueue];
         set({ actionQueue: [] });
 
@@ -132,18 +168,24 @@ const useStore = create(persist((set, get) => ({
         const state = get();
         if (!state.isConnected && !forceLive) {
             set({ actionQueue: [...state.actionQueue, { type: 'timer', key: timerKey, data }] });
-            toast('Offline: Queuing timer change', { icon: '⏳' });
         }
 
-        const previousTimers = { ...state.timers };
+        const previousState = { timers: { ...state.timers } };
         const newTimers = { ...state.timers, [timerKey]: { ...state.timers[timerKey], ...data } };
+
+        if (!forceLive) {
+            set({
+                undoStack: [...state.undoStack, previousState].slice(-50),
+                redoStack: []
+            });
+        }
 
         set({ timers: newTimers, isSyncing: true });
 
         socket.emit('updateTimer', { [timerKey]: newTimers[timerKey] }, (response) => {
             set({ isSyncing: false });
             if (response?.status === 'error') {
-                set({ timers: previousTimers });
+                set({ timers: previousState.timers });
                 toast.error(`Sync failed: ${response.message}`);
             }
         });
@@ -152,25 +194,22 @@ const useStore = create(persist((set, get) => ({
     updateScene: (data, forceLive = false) => {
         const state = get();
 
-        // Handling Preview Mode
         if (state.previewMode && !forceLive) {
             set({ stagedScene: { ...state.stagedScene, ...data } });
+            socket.emit('stagingChange', { active: true, context: 'previewing' });
             return;
         }
 
-        // Connection Resilience
         if (!state.isConnected && !forceLive) {
             set({ actionQueue: [...state.actionQueue, { type: 'scene', data }] });
-            toast('Offline: Queuing scene change', { icon: '⏳' });
         }
 
-        const previousScene = { ...state.currentScene };
+        const previousState = { currentScene: { ...state.currentScene } };
         const newScene = { ...state.currentScene, ...data };
 
-        // Undo Logic
         if (!forceLive) {
             set({
-                undoStack: [...state.undoStack, previousScene].slice(-50),
+                undoStack: [...state.undoStack, previousState].slice(-50),
                 redoStack: []
             });
         }
@@ -180,53 +219,76 @@ const useStore = create(persist((set, get) => ({
         socket.emit('updateScene', data, (response) => {
             set({ isSyncing: false });
             if (response?.status === 'error') {
-                set({ currentScene: previousScene });
+                set({ currentScene: previousState.currentScene });
                 toast.error('Scene sync failed');
             }
         });
     },
 
     undo: () => {
-        const { undoStack, currentScene } = get();
+        const { undoStack, timers, currentScene } = get();
         if (undoStack.length === 0) return;
+
         const prevState = undoStack[undoStack.length - 1];
         const newUndoStack = undoStack.slice(0, -1);
+
+        const currentStateCapture = {};
+        if (prevState.timers) currentStateCapture.timers = { ...timers };
+        if (prevState.currentScene) currentStateCapture.currentScene = { ...currentScene };
+
         set({
             undoStack: newUndoStack,
-            redoStack: [...get().redoStack, currentScene]
+            redoStack: [...get().redoStack, currentStateCapture]
         });
-        get().updateScene(prevState, true);
+
+        if (prevState.timers) {
+            Object.keys(prevState.timers).forEach(k => get().updateTimer(k, prevState.timers[k], true));
+        }
+        if (prevState.currentScene) {
+            get().updateScene(prevState.currentScene, true);
+        }
     },
 
     redo: () => {
-        const { redoStack, currentScene } = get();
+        const { redoStack, timers, currentScene } = get();
         if (redoStack.length === 0) return;
+
         const nextState = redoStack[redoStack.length - 1];
         const newRedoStack = redoStack.slice(0, -1);
+
+        const currentStateCapture = {};
+        if (nextState.timers) currentStateCapture.timers = { ...timers };
+        if (nextState.currentScene) currentStateCapture.currentScene = { ...currentScene };
+
         set({
             redoStack: newRedoStack,
-            undoStack: [...get().undoStack, currentScene]
+            undoStack: [...get().undoStack, currentStateCapture]
         });
-        get().updateScene(nextState, true);
+
+        if (nextState.timers) {
+            Object.keys(nextState.timers).forEach(k => get().updateTimer(k, nextState.timers[k], true));
+        }
+        if (nextState.currentScene) {
+            get().updateScene(nextState.currentScene, true);
+        }
     },
 
     resetAll: () => {
         socket.emit('resetAll', (response) => {
-            if (response?.status === 'ok') {
-                toast.success('System reset complete');
-            }
+            if (response?.status === 'ok') toast.success('System reset complete');
         });
     },
 
-    // Local Client-Side heartbeat
     tick: () => {
         const { timers } = get();
         let changed = false;
         const newTimers = { ...timers };
 
         if (newTimers.segment.running) {
-            newTimers.segment.remaining -= 1;
-            changed = true;
+            if (newTimers.segment.remaining > -1800) {
+                newTimers.segment.remaining -= 1;
+                changed = true;
+            }
         }
 
         if (newTimers.elapsed.running) {
@@ -245,14 +307,27 @@ const useStore = create(persist((set, get) => ({
             changed = true;
         }
 
-        if (changed) {
-            set({ timers: newTimers });
-        }
+        if (changed) set({ timers: newTimers });
     }
 }), {
     name: 'envoys-storage',
-    partialize: (state) => ({ timers: state.timers, currentScene: state.currentScene })
+    partialize: (state) => ({
+        timers: state.timers,
+        currentScene: state.currentScene,
+        token: state.token,
+        role: state.role,
+        presets: state.presets,
+        schemaVersion: state.schemaVersion
+    }),
+    version: 2,
+    migrate: (persistedState, version) => {
+        if (version === 1) {
+            return { ...persistedState, presets: [], schemaVersion: 2 };
+        }
+        return persistedState;
+    }
 }));
+
 
 
 // Local precision interval

@@ -12,21 +12,26 @@ const os = require('os');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
-const CURRENT_SCHEMA_VERSION = 1;
-const PORT = process.env.PORT || 3001;
-const FRONTEND_URL = process.env.FRONTEND_URL || '*';
+const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
 
-// Render Persistent Disk Support
-const PERSISTENT_DIR = process.env.PERSISTENT_DISK_PATH || __dirname;
-const uploadDir = process.env.UPLOADS_PATH || path.join(PERSISTENT_DIR, 'uploads');
-const dbPath = process.env.DB_PATH || path.join(PERSISTENT_DIR, 'database.sqlite');
-const backupDir = path.join(PERSISTENT_DIR, 'backups');
+const CURRENT_SCHEMA_VERSION = 2; // Incremented for migration strategy
+const PORT = process.env.PORT || 3001;
+const JWT_SECRET = process.env.JWT_SECRET || 'envoys-secret-2026';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+
+// Validate Environment Variables
+if (isNaN(PORT)) {
+    console.error('CRITICAL: Invalid PORT environment variable.');
+    process.exit(1);
+}
 
 const app = express();
 
 // Security Middleware
 app.use(helmet({
     contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.set('trust proxy', 1);
 app.use(cors({
@@ -35,11 +40,44 @@ app.use(cors({
 }));
 app.use(express.json());
 
-const limiter = rateLimit({
+// Rate Limiting
+const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 1000
+    max: 1000,
+    message: { error: 'Too many requests, please try again later.' }
 });
-app.use('/api/', limiter);
+
+const uploadLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,
+    max: 20, // 20 uploads per minute
+    message: { error: 'Upload rate limit exceeded.' }
+});
+
+app.use('/api/', globalLimiter);
+app.use('/api/upload', uploadLimiter);
+
+// Auth Middleware
+const authenticate = (req, res, next) => {
+    const token = req.headers['authorization']?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (err) {
+        res.status(401).json({ error: 'Invalid token' });
+    }
+};
+
+app.post('/api/login', (req, res) => {
+    const { password } = req.body;
+    if (password === ADMIN_PASSWORD) {
+        const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
+        res.json({ token, role: 'admin' });
+    } else {
+        res.status(401).json({ error: 'Invalid credentials' });
+    }
+});
 
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
@@ -47,9 +85,13 @@ app.get('/health', (req, res) => res.status(200).send('OK'));
 fs.ensureDirSync(uploadDir);
 fs.ensureDirSync(backupDir);
 
-app.use('/uploads', express.static(uploadDir));
+app.use('/uploads', express.static(uploadDir, {
+    setHeaders: (res) => {
+        res.set('Access-Control-Allow-Origin', '*');
+    }
+}));
 
-const STORAGE_QUOTA_BYTES = (parseInt(process.env.STORAGE_QUOTA_MB) || 1000) * 1024 * 1024;
+const STORAGE_QUOTA_BYTES = (parseInt(process.env.STORAGE_QUOTA_MB) || 5000) * 1024 * 1024;
 
 async function getStorageUsage() {
     try {
@@ -68,22 +110,23 @@ async function getStorageUsage() {
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
     filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + '-' + file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_'));
+        const ext = path.extname(file.originalname);
+        const uniqueId = uuidv4();
+        cb(null, `${uniqueId}${ext}`);
     }
 });
 
 const uploadFilter = async (req, file, cb) => {
     try {
         const usage = await getStorageUsage();
-        if (usage + (file.size || 0) > STORAGE_QUOTA_BYTES) {
+        if (usage > STORAGE_QUOTA_BYTES) {
             return cb(new Error('Storage quota exceeded.'));
         }
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm'];
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'image/gif'];
         if (allowedTypes.includes(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error('Invalid file type. Only JPG, PNG, WEBP, MP4, and WEBM are allowed.'));
+            cb(new Error('Unsupported file type.'));
         }
     } catch (e) {
         cb(e);
@@ -92,14 +135,14 @@ const uploadFilter = async (req, file, cb) => {
 
 const upload = multer({
     storage,
-    limits: { fileSize: 50 * 1024 * 1024 },
+    limits: { fileSize: 100 * 1024 * 1024 }, // 100MB max
     fileFilter: uploadFilter
 });
 
 let db;
 let appState = {
     timers: {
-        segment: { duration: 1200, remaining: 1200, running: false, type: 'countdown', behavior: 'stop' },
+        segment: { duration: 1200, remaining: 1200, running: false, type: 'countdown' },
         target: { targetTime: '12:00', remaining: 0, running: false, type: 'target' },
         elapsed: { seconds: 0, running: false, type: 'elapsed' }
     },
@@ -109,10 +152,21 @@ let appState = {
         timerVisible: true,
         theme: 'default',
         chromaKey: false,
-        positions: { timer: 'center', overlay: 'bottom' }
-    },
-    templates: []
+        positions: { timer: 'center', overlay: 'top' }
+    }
 };
+
+async function runMigrations() {
+    const versionRow = await db.get('SELECT value FROM meta WHERE key = "schema_version"');
+    let currentVersion = versionRow ? parseInt(versionRow.value) : 1;
+
+    if (currentVersion < 2) {
+        console.log('[Migration] Upgrading to v2...');
+        // Example: Add staging field to state
+        await db.run('UPDATE meta SET value = "2" WHERE key = "schema_version"');
+        currentVersion = 2;
+    }
+}
 
 async function initDB() {
     db = await open({
@@ -135,18 +189,18 @@ async function initDB() {
     const versionRow = await db.get('SELECT value FROM meta WHERE key = "schema_version"');
     if (!versionRow) {
         await db.run('INSERT INTO meta (key, value) VALUES ("schema_version", ?)', [CURRENT_SCHEMA_VERSION.toString()]);
+    } else {
+        await runMigrations();
     }
 
     const savedState = await db.get('SELECT data FROM state WHERE id = 1');
     if (savedState) {
         try {
-            const parsed = JSON.parse(savedState.data);
-            appState = { ...appState, ...parsed };
-            appState.timers.segment.running = false;
-            appState.timers.target.running = false;
-            appState.timers.elapsed.running = false;
+            appState = { ...appState, ...JSON.parse(savedState.data) };
+            // Ensure timers are stopped on restart
+            Object.keys(appState.timers).forEach(k => appState.timers[k].running = false);
         } catch (e) {
-            console.error('State corruption detected.');
+            console.error('[Error] State corruption');
         }
     }
 }
@@ -157,10 +211,9 @@ async function createBackup() {
     try {
         if (await fs.pathExists(dbPath)) {
             await fs.copy(dbPath, backupPath);
-            const backups = await fs.readdir(backupDir);
-            if (backups.length > 5) {
-                const sorted = backups.sort();
-                await fs.remove(path.join(backupDir, sorted[0]));
+            const backups = (await fs.readdir(backupDir)).sort();
+            if (backups.length > 20) {
+                await fs.remove(path.join(backupDir, backups[0]));
             }
         }
     } catch (e) {
@@ -191,18 +244,18 @@ function getNetworkInfo() {
 }
 
 // Routes
-app.post('/api/upload', (req, res) => {
+app.post('/api/upload', authenticate, (req, res) => {
     upload.single('media')(req, res, async (err) => {
         if (err) return res.status(400).json({ error: err.message });
         if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
         try {
             const { filename, mimetype, originalname } = req.file;
-            const result = await db.run(
+            const resDB = await db.run(
                 'INSERT INTO media (name, path, type) VALUES (?, ?, ?)',
                 [originalname, `/uploads/${filename}`, mimetype]
             );
-            const newMedia = { id: result.lastID, name: originalname, path: `/uploads/${filename}`, type: mimetype };
+            const newMedia = { id: resDB.lastID, name: originalname, path: `/uploads/${filename}`, type: mimetype };
             io.emit('mediaAdded', newMedia);
             res.json(newMedia);
         } catch (dbErr) {
@@ -221,25 +274,29 @@ app.get('/api/media', async (req, res) => {
     }
 });
 
-app.delete('/api/media/:id', async (req, res) => {
+app.delete('/api/media/:id', authenticate, async (req, res) => {
     try {
         const item = await db.get('SELECT * FROM media WHERE id = ?', req.params.id);
         if (item) {
             const filePath = path.join(uploadDir, path.basename(item.path));
-            if (await fs.pathExists(filePath)) await fs.remove(filePath);
+            if (await fs.pathExists(filePath)) await fs.remove(filePath).catch(e => console.log('File remove skip'));
             await db.run('DELETE FROM media WHERE id = ?', req.params.id);
             io.emit('mediaDeleted', req.params.id);
             res.json({ success: true });
         } else {
-            res.status(404).json({ error: 'Media not found' });
+            res.status(404).json({ error: 'Not found' });
         }
     } catch (e) {
         res.status(500).json({ error: 'Delete failed' });
     }
 });
 
+app.get('/api/export', authenticate, async (req, res) => {
+    res.json(appState);
+});
+
 app.get('/api/info', (req, res) => {
-    res.json({ networks: getNetworkInfo(), port: PORT });
+    res.json({ networks: getNetworkInfo(), port: PORT, version: '2.0.0-PRO' });
 });
 
 const server = http.createServer(app);
@@ -257,24 +314,16 @@ setInterval(() => {
     let changed = false;
 
     if (appState.timers.segment.running) {
-        if (appState.timers.segment.remaining > -360000) {
+        // Cap at -1800 seconds (30 mins overrun)
+        if (appState.timers.segment.remaining > -1800) {
             appState.timers.segment.remaining -= 1;
-            if (appState.timers.segment.remaining <= 0 && appState.timers.segment.behavior === 'stop') {
-                appState.timers.segment.remaining = 0;
-                appState.timers.segment.running = false;
-            }
             changed = true;
         }
     }
 
     if (appState.timers.elapsed.running) {
-        if (appState.timers.elapsed.seconds < 359999) {
-            appState.timers.elapsed.seconds += 1;
-            changed = true;
-        } else {
-            appState.timers.elapsed.running = false;
-            changed = true;
-        }
+        appState.timers.elapsed.seconds += 1;
+        changed = true;
     }
 
     const now = new Date();
@@ -299,33 +348,25 @@ setInterval(() => {
 }, 60000);
 
 io.on('connection', (socket) => {
-    console.log(`[Socket] New client connected: ${socket.id}`);
-    socket.emit('stateUpdate', appState); // Initial full state
-
-    socket.on('disconnect', () => {
-        console.log(`[Socket] Client disconnected: ${socket.id}`);
-    });
+    console.log(`[Socket] Connected: ${socket.id}`);
+    socket.emit('stateUpdate', appState);
 
     socket.on('updateTimer', (data, ack) => {
-        try {
-            appState.timers = { ...appState.timers, ...data };
-            socket.broadcast.emit('stateUpdate', { timers: appState.timers });
-            if (ack) ack({ status: 'ok' });
-            saveState();
-        } catch (e) {
-            if (ack) ack({ status: 'error', message: e.message });
-        }
+        appState.timers = { ...appState.timers, ...data };
+        socket.broadcast.emit('stateUpdate', { timers: appState.timers });
+        if (ack) ack({ status: 'ok' });
+        saveState();
     });
 
     socket.on('updateScene', (data, ack) => {
-        try {
-            appState.currentScene = { ...appState.currentScene, ...data };
-            socket.broadcast.emit('stateUpdate', { currentScene: appState.currentScene });
-            if (ack) ack({ status: 'ok' });
-            saveState();
-        } catch (e) {
-            if (ack) ack({ status: 'error', message: e.message });
-        }
+        appState.currentScene = { ...appState.currentScene, ...data };
+        socket.broadcast.emit('stateUpdate', { currentScene: appState.currentScene });
+        if (ack) ack({ status: 'ok' });
+        saveState();
+    });
+
+    socket.on('stagingChange', (data) => {
+        socket.broadcast.emit('stagingUpdate', { ...data, userId: socket.id });
     });
 
     socket.on('resetAll', (ack) => {
@@ -341,31 +382,16 @@ io.on('connection', (socket) => {
 
 initDB().then(() => {
     server.listen(PORT, '0.0.0.0', () => {
-        const nets = getNetworkInfo();
-        console.log(`\n🚀 EnvoysOS v1.2.2 Production Ready`);
+        console.log(`\n🚀 EnvoysOS v2.0.0 Production Ready`);
         console.log(` Port: ${PORT}`);
-        console.log(` Bound: 0.0.0.0`);
     });
 });
 
-// Production Serving
 const clientPath = path.join(__dirname, '../client/dist');
-
-// Middleware to serve static files
 app.use(express.static(clientPath));
-
-// API and Uploads routing should already be handled, but as a fallback
-// handle all other routes by serving the index.html from dist
 app.get(/^(?!\/api|\/uploads|\/socket\.io).*/, (req, res) => {
-    // Skip if it looks like an API, uploads, or socket request that wasn't caught
-    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/socket.io')) {
-        return res.status(404).json({ error: 'Not Found' });
-    }
-
     const indexPath = path.join(clientPath, 'index.html');
-    if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
-    } else {
-        res.status(404).send('Production build not found. Please run npm run build.');
-    }
+    if (fs.existsSync(indexPath)) res.sendFile(indexPath);
+    else res.status(404).send('Build not found.');
 });
+

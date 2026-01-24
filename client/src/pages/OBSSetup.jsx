@@ -19,7 +19,7 @@ const OBSSetup = () => {
 
     return (
         <div className="min-h-screen bg-background text-slate-200 p-8 lg:p-12 font-sans selection:bg-primary/30">
-            <Link to="/" className="inline-flex items-center gap-2 text-slate-500 hover:text-white transition-colors mb-8 font-bold uppercase tracking-widest text-xs">
+            <Link to="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-8 font-bold uppercase tracking-widest text-xs">
                 <ArrowLeft size={14} /> Back to Dashboard
             </Link>
 
@@ -40,7 +40,7 @@ const OBSSetup = () => {
                             </div>
                             <div>
                                 <h2 className="text-xl font-bold">Browser Source URL</h2>
-                                <p className="text-slate-500 text-sm">Add this as a "Browser" source in OBS</p>
+                                <p className="text-slate-400 text-sm">Add this as a "Browser" source in OBS</p>
                             </div>
                         </div>
 
@@ -55,21 +55,21 @@ const OBSSetup = () => {
                         </div>
 
                         <div className="space-y-4">
-                            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-500">Recommended Settings</h3>
+                            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400">Recommended Settings</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                                    <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Width</p>
+                                    <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Width</p>
                                     <p className="font-bold font-mono">1920</p>
                                 </div>
                                 <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                                    <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Height</p>
+                                    <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Height</p>
                                     <p className="font-bold font-mono">1080</p>
                                 </div>
                                 <div className="col-span-2 p-4 bg-white/5 rounded-xl border border-white/5 flex items-start gap-3">
                                     <div className="mt-0.5"><Settings size={14} className="text-primary" /></div>
                                     <div>
                                         <p className="font-bold text-sm mb-1">Control Audio via OBS</p>
-                                        <p className="text-xs text-slate-500">Unordered. If you play video through EnvoysOS, enable this to route audio to the stream.</p>
+                                        <p className="text-xs text-slate-400">Unordered. If you play video through EnvoysOS, enable this to route audio to the stream.</p>
                                     </div>
                                 </div>
                             </div>
@@ -86,7 +86,7 @@ const OBSSetup = () => {
                             </div>
                             <div>
                                 <h2 className="text-xl font-bold">Chroma Key & Styling</h2>
-                                <p className="text-slate-500 text-sm">For green screen or alpha transparency</p>
+                                <p className="text-slate-400 text-sm">For green screen or alpha transparency</p>
                             </div>
                         </div>
 
@@ -103,7 +103,7 @@ const OBSSetup = () => {
                                 <div className="bg-black/40 p-4 rounded-xl border border-white/10 font-mono text-xs text-slate-300">
                                     {cssSnippet}
                                 </div>
-                                <p className="text-xs text-slate-500 mt-2">
+                                <p className="text-xs text-slate-400 mt-2">
                                     Usually not required, but clears background artifacts in some OBS versions.
                                 </p>
                             </div>
