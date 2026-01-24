@@ -3,8 +3,8 @@
     "private": true,
     "version": "2.0.0",
     "scripts": {
-        "build": "npm --prefix client ci && npm --prefix client run build && npm --prefix server ci",
-        "build:force": "npm --prefix client install --no-save && npm --prefix client run build && npm --prefix server install --no-save",
+        "build": "npm --prefix client ci --include=dev && npm --prefix client run build && npm --prefix server ci",
+        "build:force": "npm --prefix client install --include=dev && npm --prefix client run build && npm --prefix server install",
         "start": "node server/index.js",
         "dev": "concurrently \"npm --prefix client run dev\" \"npm --prefix server run dev\"",
         "clean": "rm -rf client/node_modules server/node_modules client/dist client/package-lock.json server/package-lock.json package-lock.json",
