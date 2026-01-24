@@ -1,19 +1,17 @@
 {
-    "name": "theenvoysos",
-    "version": "1.0.0",
+    "name": "envoys-os-monorepo",
+    "private": true,
+    "version": "2.0.0",
     "scripts": {
-        "setup": "npm install && cd server && npm install && cd ../client && npm install",
-        "build": "npm run build --prefix client",
+        "build": "npm --prefix client ci && npm --prefix client run build && npm --prefix server ci",
+        "build:force": "npm --prefix client install --no-save && npm --prefix client run build && npm --prefix server install --no-save",
         "start": "node server/index.js",
-        "dev": "node dev.js"
+        "dev": "concurrently \"npm --prefix client run dev\" \"npm --prefix server run dev\"",
+        "clean": "rm -rf client/node_modules server/node_modules client/dist client/package-lock.json server/package-lock.json package-lock.json",
+        "deps:check": "npm --prefix client ls --depth=0 && npm --prefix server ls --depth=0"
     },
-    "dependencies": {
-        "bcryptjs": "^3.0.3",
-        "dotenv": "^17.2.3",
-        "express-rate-limit": "^8.2.1",
-        "fs-extra": "^11.3.3",
-        "helmet": "^8.1.0",
-        "jsonwebtoken": "^9.0.3"
+    "devDependencies": {
+        "concurrently": "^8.2.2"
     },
     "engines": {
         "node": ">=20.0.0"
