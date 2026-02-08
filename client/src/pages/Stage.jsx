@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../store/useStore';
-import { motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useOutputHardening } from '../hooks/useOutputHardening';
 
 const Stage = () => {
@@ -34,7 +34,7 @@ const Stage = () => {
                         <div className="px-3 py-1 bg-primary text-black text-xs font-black rounded-lg">ENVOYS OS v2.0</div>
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Lagos Local Active</span>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Envoys HQ</span>
                         </div>
                     </div>
                 </div>

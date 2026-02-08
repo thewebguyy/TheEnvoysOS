@@ -20,6 +20,9 @@ const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'envoys-secret-2026';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
+const uploadDir = path.join(__dirname, 'uploads');
+const backupDir = path.join(__dirname, 'backups');
+
 // Validate Environment Variables
 if (isNaN(PORT)) {
     console.error('CRITICAL: Invalid PORT environment variable.');

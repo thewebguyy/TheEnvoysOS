@@ -131,7 +131,7 @@ const useStore = create(persist((set, get) => ({
         try {
             const res = await axios.get(`${BASE_URL}/api/media`);
             set({ media: res.data.media, storageStats: { usage: res.data.usage, quota: res.data.quota } });
-        } catch (err) {
+        } catch {
             toast.error('Could not load media library');
         } finally {
             set({ isLoading: false });
@@ -146,7 +146,7 @@ const useStore = create(persist((set, get) => ({
                 headers: { Authorization: `Bearer ${token}` }
             });
             toast.success('Media deleted');
-        } catch (err) {
+        } catch {
             toast.error('Failed to delete media');
         }
     },

@@ -3,7 +3,7 @@ import useStore, { BASE_URL } from '../store/useStore';
 import { Toaster, toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import { Monitor, Cast, Sliders, ExternalLink, Zap, Keyboard, HelpCircle, Download, LogIn, LogOut } from 'lucide-react';
+import { Monitor, Cast, ExternalLink, Zap, Keyboard, Download, LogIn, LogOut } from 'lucide-react';
 import { useDisplayCount } from '../hooks/useDisplayCount';
 import { displayManager } from '../utils/DisplayManager';
 
@@ -28,13 +28,6 @@ const Dashboard = () => {
 
     // Display Management
     const { displayCount, isSupported, detectDisplays, screens } = useDisplayCount();
-
-    const [speechSupported, setSpeechSupported] = useState(false);
-
-    useEffect(() => {
-        setSpeechSupported('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
-    }, []);
-
 
     // Keyboard Shortcuts
     useEffect(() => {
@@ -375,7 +368,7 @@ const Dashboard = () => {
                                     { id: 'audience', name: 'Audience View', path: '/audience', desc: 'Main projector output' },
                                     { id: 'stage', name: 'Stage View', path: '/stage', desc: 'Confidence monitor for speakers' },
                                     { id: 'stream', name: 'Stream View', path: '/stream', desc: 'OBS/vMix alpha transparency feed' }
-                                ].map((output, idx) => (
+                                ].map((output) => (
                                     <div
                                         key={output.path}
                                         className="glass-card p-8 rounded-[3rem] hover:border-primary/40 transition-all group flex flex-col items-center text-center relative overflow-hidden"
