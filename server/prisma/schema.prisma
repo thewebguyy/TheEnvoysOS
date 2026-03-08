@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  domain    String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users    User[]
+  media    Media[]
+  services Service[]
+  songs    Song[]
+}
+
+enum Role {
+  ADMIN
+  TECH_DIRECTOR
+  OPERATOR
+  VOLUNTEER
+  VIEWER
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(VIEWER)
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model Media {
+  id           String   @id @default(uuid())
+  name         String
+  key          String   // S3 object key
+  url          String?
+  type         String
+  size         Int
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  segments     Segment[]
+
+  @@index([tenantId])
+}
+
+model Service {
+  id          String    @id @default(uuid())
+  name        String
+  date        DateTime
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  segments    Segment[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tenantId])
+}
+
+enum SegmentType {
+  WORSHIP_SET
+  ANNOUNCEMENTS
+  SERMON
+  OFFERING
+  CLOSING
+  CUSTOM
+}
+
+model Segment {
+  id         String      @id @default(uuid())
+  serviceId  String
+  service    Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  type       SegmentType
+  title      String
+  order      Int
+  duration   Int?        // Expected duration in seconds
+  notes      String?
+  mediaId    String?
+  media      Media?      @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([serviceId])
+}
+
+model Song {
+  id           String            @id @default(uuid())
+  title        String
+  author       String?
+  ccliNumber   String?
+  tenantId     String
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  arrangements SongArrangement[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([tenantId])
+}
+
+model SongArrangement {
+  id        String        @id @default(uuid())
+  songId    String
+  song      Song          @relation(fields: [songId], references: [id], onDelete: Cascade)
+  name      String        // e.g. "Default", "Acoustic"
+  sections  SongSection[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([songId])
+}
+
+model SongSection {
+  id            String          @id @default(uuid())
+  arrangementId String
+  arrangement   SongArrangement @relation(fields: [arrangementId], references: [id], onDelete: Cascade)
+  name          String          // e.g. "Verse 1", "Chorus"
+  order         Int
+  slides        LyricSlide[]
+
+  @@index([arrangementId])
+}
+
+model LyricSlide {
+  id           String      @id @default(uuid())
+  sectionId    String
+  section      SongSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  text         String
+  order        Int
+  advanceDelay Int?        // For auto-advance mode (milliseconds)
+
+  @@index([sectionId])
+}
