@@ -1,0 +1,2073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EnvoysAI + PulpitOS — Product Architecture Blueprint</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Sora:wght@300;400;600;700;800&display=swap');
+
+  :root {
+    --ink: #0a0a0c;
+    --surface-1: #111116;
+    --surface-2: #181820;
+    --surface-3: #20202c;
+    --border-subtle: rgba(255,255,255,0.06);
+    --border-em: rgba(255,255,255,0.12);
+    --text-primary: #e8e4f0;
+    --text-secondary: #9490a8;
+    --text-dim: #5a5570;
+
+    /* Envoys AI palette — electric blue */
+    --envoys: #4f8fff;
+    --envoys-dim: rgba(79,143,255,0.12);
+    --envoys-border: rgba(79,143,255,0.3);
+    --envoys-glow: rgba(79,143,255,0.08);
+
+    /* PulpitOS palette — warm amber-gold */
+    --pulpit: #f0a030;
+    --pulpit-dim: rgba(240,160,48,0.12);
+    --pulpit-border: rgba(240,160,48,0.3);
+    --pulpit-glow: rgba(240,160,48,0.06);
+
+    /* Bridge / Integration — violet */
+    --bridge: #9f6fff;
+    --bridge-dim: rgba(159,111,255,0.12);
+    --bridge-border: rgba(159,111,255,0.3);
+
+    /* Status colors */
+    --ok: #3dcf8e;
+    --ok-dim: rgba(61,207,142,0.1);
+    --warn: #f08030;
+    --warn-dim: rgba(240,128,48,0.1);
+    --danger: #f05060;
+    --danger-dim: rgba(240,80,96,0.1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--ink);
+    color: var(--text-primary);
+    font-family: 'Sora', sans-serif;
+    font-size: 14px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── LAYOUT ─── */
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 28px 120px; }
+
+  /* ─── COVER ─── */
+  .cover {
+    padding: 72px 0 60px;
+    position: relative;
+    margin-bottom: 0;
+  }
+
+  .system-id {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 36px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .system-id::before {
+    content: '// ARCHITECTURE';
+    color: var(--envoys);
+    opacity: 0.6;
+  }
+
+  .cover-title {
+    font-size: clamp(32px, 5vw, 54px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -1.5px;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+  }
+
+  .cover-title .envoys-word { color: var(--envoys); }
+  .cover-title .pulpit-word { color: var(--pulpit); }
+  .cover-title .plus { color: var(--text-dim); }
+
+  .cover-sub {
+    font-size: 15px;
+    color: var(--text-secondary);
+    max-width: 580px;
+    line-height: 1.65;
+    margin-bottom: 40px;
+    font-weight: 300;
+  }
+
+  .cover-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1px;
+    background: var(--border-subtle);
+    border: 1px solid var(--border-subtle);
+    margin-bottom: 64px;
+  }
+
+  .cover-stat {
+    background: var(--surface-1);
+    padding: 18px 20px;
+  }
+
+  .cover-stat-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .cover-stat-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  /* ─── SECTIONS ─── */
+  .section {
+    margin-bottom: 80px;
+    padding-top: 20px;
+  }
+
+  .section-marker {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .section-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    flex-shrink: 0;
+  }
+
+  .section-title {
+    font-size: clamp(18px, 2.5vw, 24px);
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.4px;
+  }
+
+  .section-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .badge-envoys { background: var(--envoys-dim); color: var(--envoys); border: 1px solid var(--envoys-border); }
+  .badge-pulpit { background: var(--pulpit-dim); color: var(--pulpit); border: 1px solid var(--pulpit-border); }
+  .badge-bridge { background: var(--bridge-dim); color: var(--bridge); border: 1px solid var(--bridge-border); }
+  .badge-ok { background: var(--ok-dim); color: var(--ok); border: 1px solid rgba(61,207,142,0.3); }
+  .badge-warn { background: var(--warn-dim); color: var(--warn); border: 1px solid rgba(240,128,48,0.3); }
+  .badge-danger { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(240,80,96,0.3); }
+
+  /* ─── PROSE ─── */
+  p { color: var(--text-secondary); font-size: 13.5px; line-height: 1.85; margin-bottom: 14px; }
+  p:last-child { margin-bottom: 0; }
+  p strong { color: var(--text-primary); font-weight: 700; }
+
+  h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 24px 0 10px;
+    letter-spacing: -0.2px;
+  }
+
+  /* ─── CALLOUT ─── */
+  .callout {
+    padding: 16px 20px;
+    margin: 20px 0;
+    border-left: 3px solid var(--envoys);
+    background: var(--envoys-glow);
+  }
+
+  .callout p { color: #a8c4ff; font-size: 13px; margin: 0; }
+  .callout.pulpit { border-left-color: var(--pulpit); background: var(--pulpit-glow); }
+  .callout.pulpit p { color: #f0c878; }
+  .callout.danger { border-left-color: var(--danger); background: var(--danger-dim); }
+  .callout.danger p { color: #f09098; }
+  .callout.ok { border-left-color: var(--ok); background: var(--ok-dim); }
+  .callout.ok p { color: #78e0b0; }
+  .callout.bridge { border-left-color: var(--bridge); background: var(--bridge-dim); }
+  .callout.bridge p { color: #c8a8ff; }
+
+  /* ─── SYSTEM ARCHITECTURE DIAGRAM ─── */
+  .arch-diagram {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    padding: 40px 32px;
+    margin: 28px 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .arch-diagram::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(to right, var(--envoys), var(--bridge), var(--pulpit));
+  }
+
+  .arch-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 28px;
+  }
+
+  /* Timeline arch — service flow */
+  .service-timeline {
+    display: grid;
+    grid-template-columns: 1fr 2px 1fr 2px 1fr;
+    gap: 0;
+    margin: 0 0 20px;
+  }
+
+  .timeline-phase {
+    padding: 20px;
+    position: relative;
+  }
+
+  .timeline-phase.envoys-phase {
+    background: var(--envoys-glow);
+    border: 1px solid var(--envoys-border);
+    border-right: none;
+  }
+
+  .timeline-phase.bridge-phase {
+    background: var(--bridge-dim);
+    border: 1px solid var(--bridge-border);
+    border-right: none;
+    border-left: none;
+  }
+
+  .timeline-phase.pulpit-phase {
+    background: var(--pulpit-glow);
+    border: 1px solid var(--pulpit-border);
+    border-left: none;
+  }
+
+  .timeline-sep {
+    background: var(--border-em);
+    position: relative;
+  }
+
+  .timeline-sep::before {
+    content: '→';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--bridge);
+    font-size: 14px;
+    background: var(--surface-1);
+    padding: 4px 2px;
+  }
+
+  .phase-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .phase-tag.envoys-tag { color: var(--envoys); }
+  .phase-tag.bridge-tag { color: var(--bridge); }
+  .phase-tag.pulpit-tag { color: var(--pulpit); }
+
+  .phase-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+  }
+
+  .phase-items {
+    list-style: none;
+    padding: 0;
+  }
+
+  .phase-items li {
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding: 3px 0;
+    padding-left: 14px;
+    position: relative;
+    line-height: 1.4;
+  }
+
+  .phase-items li::before {
+    content: '·';
+    position: absolute;
+    left: 4px;
+    color: var(--text-dim);
+  }
+
+  /* ─── DATA FLOW DIAGRAM ─── */
+  .data-flow {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    padding: 32px;
+    margin: 24px 0;
+  }
+
+  .flow-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 80px 1fr;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .flow-row:last-child { border-bottom: none; }
+
+  .flow-source {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    text-align: center;
+  }
+
+  .flow-source.envoys { background: var(--envoys-dim); color: var(--envoys); }
+  .flow-source.pulpit { background: var(--pulpit-dim); color: var(--pulpit); }
+  .flow-source.bridge { background: var(--bridge-dim); color: var(--bridge); }
+
+  .flow-data {
+    font-size: 12px;
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  .flow-data-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  .flow-arrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--bridge);
+    text-align: center;
+  }
+
+  .flow-dest {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  /* ─── BOUNDARY TABLE ─── */
+  .boundary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    background: var(--border-subtle);
+    margin: 24px 0;
+  }
+
+  .boundary-col {
+    background: var(--surface-1);
+    padding: 0;
+  }
+
+  .boundary-header {
+    padding: 16px 20px;
+    border-bottom: 2px solid;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .boundary-header.envoys-header {
+    border-bottom-color: var(--envoys);
+    background: var(--envoys-glow);
+  }
+
+  .boundary-header.pulpit-header {
+    border-bottom-color: var(--pulpit);
+    background: var(--pulpit-glow);
+  }
+
+  .boundary-header-title {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .envoys-header .boundary-header-title { color: var(--envoys); }
+  .pulpit-header .boundary-header-title { color: var(--pulpit); }
+
+  .boundary-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .boundary-items {
+    padding: 0;
+    list-style: none;
+  }
+
+  .boundary-item {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .boundary-item:last-child { border-bottom: none; }
+
+  .bi-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+  }
+
+  .bi-icon.e { background: var(--envoys-dim); color: var(--envoys); }
+  .bi-icon.p { background: var(--pulpit-dim); color: var(--pulpit); }
+
+  .bi-text strong {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+  }
+
+  .bi-text span {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+
+  /* ─── JOURNEY MAP ─── */
+  .journey-map {
+    position: relative;
+    margin: 24px 0;
+  }
+
+  .journey-time-row {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 20px;
+    margin-bottom: 4px;
+    align-items: stretch;
+  }
+
+  .journey-time {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: right;
+    padding-top: 14px;
+    line-height: 1.3;
+  }
+
+  .journey-block {
+    border: 1px solid;
+    padding: 14px 18px;
+    position: relative;
+  }
+
+  .journey-block.envoys-block {
+    border-color: var(--envoys-border);
+    background: var(--envoys-glow);
+  }
+
+  .journey-block.pulpit-block {
+    border-color: var(--pulpit-border);
+    background: var(--pulpit-glow);
+  }
+
+  .journey-block.bridge-block {
+    border-color: var(--bridge-border);
+    background: var(--bridge-dim);
+  }
+
+  .journey-block.neutral-block {
+    border-color: var(--border-em);
+    background: var(--surface-2);
+  }
+
+  .journey-block-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .envoys-block .journey-block-tag { color: var(--envoys); }
+  .pulpit-block .journey-block-tag { color: var(--pulpit); }
+  .bridge-block .journey-block-tag { color: var(--bridge); }
+  .neutral-block .journey-block-tag { color: var(--text-dim); }
+
+  .journey-block-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .journey-block-detail {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+  }
+
+  .handoff-marker {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    margin: 4px 0;
+  }
+
+  .handoff-line {
+    flex: 1;
+    height: 1px;
+    background: var(--bridge);
+    opacity: 0.4;
+  }
+
+  .handoff-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--bridge);
+    padding: 4px 10px;
+    border: 1px solid var(--bridge-border);
+    background: var(--bridge-dim);
+    white-space: nowrap;
+  }
+
+  /* ─── ROADMAP ─── */
+  .roadmap-phases {
+    display: grid;
+    gap: 2px;
+    background: var(--border-subtle);
+    margin: 24px 0;
+  }
+
+  .roadmap-phase {
+    background: var(--surface-1);
+    padding: 0;
+  }
+
+  .phase-head {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 0;
+    align-items: stretch;
+  }
+
+  .phase-timing {
+    padding: 16px 20px;
+    border-right: 1px solid var(--border-subtle);
+  }
+
+  .phase-timing-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .phase-timing-range {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .phase-timing-name {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .phase-content {
+    padding: 16px 20px;
+  }
+
+  .phase-content-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+  }
+
+  .phase-tasks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  @media (max-width: 600px) {
+    .phase-tasks { grid-template-columns: 1fr; }
+    .service-timeline { grid-template-columns: 1fr; }
+    .timeline-sep { display: none; }
+    .boundary-grid { grid-template-columns: 1fr; }
+    .flow-row { grid-template-columns: 1fr; }
+    .phase-head { grid-template-columns: 1fr; }
+  }
+
+  .task-group {
+    background: var(--surface-2);
+    padding: 12px;
+  }
+
+  .task-group-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .task-group-label.envoys-label { color: var(--envoys); }
+  .task-group-label.pulpit-label { color: var(--pulpit); }
+  .task-group-label.avoid-label { color: var(--danger); }
+  .task-group-label.both-label { color: var(--bridge); }
+
+  .task-list {
+    list-style: none;
+    padding: 0;
+  }
+
+  .task-list li {
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-left: 12px;
+    position: relative;
+    line-height: 1.4;
+  }
+
+  .task-list li:last-child { border-bottom: none; }
+
+  .task-list li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    font-size: 9px;
+  }
+
+  .task-list.avoid li::before { content: '✕'; color: var(--danger); }
+  .task-list li strong { color: var(--text-primary); }
+
+  /* ─── HOOK MECHANISM ─── */
+  .hook-diagram {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    padding: 32px;
+    margin: 24px 0;
+    position: relative;
+  }
+
+  .hook-moment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+    background: var(--bridge-dim);
+    border: 1px solid var(--bridge-border);
+    margin: 20px 0;
+  }
+
+  .hook-moment-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--bridge);
+    margin-bottom: 8px;
+  }
+
+  .hook-moment-text {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+    max-width: 500px;
+    line-height: 1.3;
+  }
+
+  .hook-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 2px;
+    background: var(--border-subtle);
+    margin: 20px 0;
+  }
+
+  .hook-step {
+    background: var(--surface-2);
+    padding: 16px;
+  }
+
+  .hook-step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--bridge);
+    margin-bottom: 8px;
+  }
+
+  .hook-step-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .hook-step-text {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  /* ─── PRICING ─── */
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    background: var(--border-subtle);
+    margin: 24px 0;
+  }
+
+  .pricing-col {
+    background: var(--surface-1);
+    overflow: hidden;
+  }
+
+  .pricing-header {
+    padding: 20px;
+    border-bottom: 2px solid;
+  }
+
+  .pricing-header.e { border-bottom-color: var(--envoys); background: var(--envoys-glow); }
+  .pricing-header.p { border-bottom-color: var(--pulpit); background: var(--pulpit-glow); }
+
+  .pricing-product { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .e .pricing-product { color: var(--envoys); }
+  .p .pricing-product { color: var(--pulpit); }
+
+  .pricing-purpose {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .pricing-tiers {
+    padding: 0;
+  }
+
+  .pricing-tier {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: start;
+  }
+
+  .pricing-tier:last-child { border-bottom: none; }
+
+  .tier-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .tier-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+
+  .tier-price {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .tier-price.envoys-price { color: var(--envoys); }
+  .tier-price.pulpit-price { color: var(--pulpit); }
+
+  /* ─── MOAT TABLE ─── */
+  .moat-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 2px;
+    margin: 24px 0;
+  }
+
+  .moat-table th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    text-align: left;
+    padding: 10px 14px;
+    background: var(--surface-2);
+  }
+
+  .moat-table td {
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 12px 14px;
+    background: var(--surface-1);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  .moat-table td:first-child {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 12px;
+    width: 180px;
+  }
+
+  .moat-table td:last-child {
+    color: var(--ok);
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ─── MVP SPEC ─── */
+  .mvp-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    background: var(--border-subtle);
+    margin: 24px 0;
+  }
+
+  .mvp-cell {
+    background: var(--surface-1);
+    padding: 20px;
+  }
+
+  .mvp-cell-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .mvp-cell-label.build { color: var(--ok); }
+  .mvp-cell-label.skip { color: var(--danger); }
+  .mvp-cell-label.defer { color: var(--warn); }
+  .mvp-cell-label.critical { color: var(--bridge); }
+
+  /* ─── RISKS ─── */
+  .risk-list {
+    list-style: none;
+    padding: 0;
+    margin: 24px 0;
+  }
+
+  .risk-item {
+    display: grid;
+    grid-template-columns: 28px 80px 1fr;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    align-items: start;
+  }
+
+  .risk-item:last-child { border-bottom: none; }
+
+  .risk-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--danger);
+    padding-top: 2px;
+  }
+
+  .risk-level {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    text-align: center;
+    height: fit-content;
+  }
+
+  .risk-level.fatal { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(240,80,96,0.3); }
+  .risk-level.high { background: var(--warn-dim); color: var(--warn); border: 1px solid rgba(240,128,48,0.3); }
+  .risk-level.medium { background: var(--bridge-dim); color: var(--bridge); border: 1px solid var(--bridge-border); }
+
+  .risk-content-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .risk-content-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .risk-mitigation {
+    font-size: 11px;
+    color: var(--ok);
+    margin-top: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-style: italic;
+  }
+
+  /* ─── FOOTER ─── */
+  .doc-footer {
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 24px;
+    margin-top: 64px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .doc-footer p {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  /* ─── UTILITY ─── */
+  ul.plain-list {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0;
+  }
+
+  ul.plain-list li {
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 4px 0 4px 16px;
+    position: relative;
+    line-height: 1.5;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  ul.plain-list li:last-child { border-bottom: none; }
+
+  ul.plain-list li::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: var(--text-dim);
+    font-size: 10px;
+    top: 6px;
+  }
+
+  ul.plain-list li strong { color: var(--text-primary); }
+
+  .separator {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 60px 0;
+  }
+
+  /* revenue model visual */
+  .rev-model {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 2px;
+    background: var(--border-subtle);
+    margin: 24px 0;
+  }
+
+  .rev-stream {
+    background: var(--surface-1);
+    padding: 20px;
+  }
+
+  .rev-stream-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .rev-stream-amount {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--pulpit);
+    margin-bottom: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .rev-stream-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="system-id">v1.0 — ARCHITECTURE BLUEPRINT — MARCH 2026</div>
+    <h1 class="cover-title">
+      <span class="envoys-word">EnvoysAI</span><span class="plus"> + </span><span class="pulpit-word">PulpitOS</span><br>
+      Unified Product System
+    </h1>
+    <p class="cover-sub">A complete product architecture document: how these two products connect, where the data flows, what each owns, how one converts users into the other, and exactly what to build — in order — to make this system real.</p>
+
+    <div class="cover-grid">
+      <div class="cover-stat">
+        <div class="cover-stat-label">Architecture Type</div>
+        <div class="cover-stat-value">Wedge → Platform Expansion</div>
+      </div>
+      <div class="cover-stat">
+        <div class="cover-stat-label">EnvoysAI Role</div>
+        <div class="cover-stat-value">Capture Layer + Trust Engine</div>
+      </div>
+      <div class="cover-stat">
+        <div class="cover-stat-label">PulpitOS Role</div>
+        <div class="cover-stat-value">Content OS + Revenue Engine</div>
+      </div>
+      <div class="cover-stat">
+        <div class="cover-stat-label">Integration Model</div>
+        <div class="cover-stat-value">Shared Org Context + API Bridge</div>
+      </div>
+      <div class="cover-stat">
+        <div class="cover-stat-label">Source of Truth</div>
+        <div class="cover-stat-value">PulpitOS (post-service)</div>
+      </div>
+      <div class="cover-stat">
+        <div class="cover-stat-label">Author</div>
+        <div class="cover-stat-value">Principal Architecture Review</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 1: SYSTEM ARCHITECTURE -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-marker">
+      <span class="section-num">01 —</span>
+      <h2 class="section-title">System Architecture</h2>
+      <span class="section-badge badge-bridge">Critical</span>
+    </div>
+
+    <p>The fundamental design principle: <strong>EnvoysAI owns the live moment. PulpitOS owns everything that comes before and after it.</strong> They do not compete for the same data — they hand off to each other at a precise moment: the end of service. The "Distribute" button is the architectural seam.</p>
+
+    <div class="arch-diagram">
+      <div class="arch-label">// Full Service Lifecycle — Data & Control Flow</div>
+
+      <div class="service-timeline">
+        <div class="timeline-phase envoys-phase">
+          <div class="phase-tag envoys-tag">Envoys AI</div>
+          <div class="phase-title">Before + During Service</div>
+          <ul class="phase-items">
+            <li>Set sermon series + speaker metadata</li>
+            <li>Load slides and background media assets</li>
+            <li>Configure timer presets for each segment</li>
+            <li>Run live: timers, overlays, OBS integration</li>
+            <li>Record audio/video of full service</li>
+            <li>Capture live engagement signals</li>
+          </ul>
+        </div>
+
+        <div class="timeline-sep"></div>
+
+        <div class="timeline-phase bridge-phase">
+          <div class="phase-tag bridge-tag">The Handoff</div>
+          <div class="phase-title">End of Service</div>
+          <ul class="phase-items">
+            <li>Service recording finalized</li>
+            <li>Metadata package assembled</li>
+            <li>"Distribute This Service" triggered</li>
+            <li>EnvoysAI pushes to PulpitOS API</li>
+            <li>Church gets PulpitOS upgrade prompt</li>
+          </ul>
+        </div>
+
+        <div class="timeline-sep"></div>
+
+        <div class="timeline-phase pulpit-phase">
+          <div class="phase-tag pulpit-tag">PulpitOS</div>
+          <div class="phase-title">After Service</div>
+          <ul class="phase-items">
+            <li>AI transcription + sermon notes generated</li>
+            <li>Auto-publish to podcast, YouTube, WhatsApp</li>
+            <li>Social captions + blog post created</li>
+            <li>Giving links embedded in all content</li>
+            <li>Analytics: reach, engagement, giving tracked</li>
+            <li>Archive: permanent content history built</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h3>Shared Data Architecture</h3>
+    <p>Both products share one <strong>Organization Context</strong> — a single record that identifies the church, its branding, its members, and its content history. When a church signs up for EnvoysAI, an Organization record is created. When they upgrade to PulpitOS, that same record expands — no re-onboarding, no data re-entry. This is the invisible thread that makes the system feel like one product.</p>
+
+    <div class="data-flow">
+      <div class="arch-label" style="margin-bottom: 20px;">// Data Flow — What Moves Where</div>
+
+      <div class="flow-row">
+        <div class="flow-source envoys">EnvoysAI</div>
+        <div>
+          <div class="flow-data">Service Recording (audio/video)</div>
+          <div class="flow-data-sub">Captured during live service, stored in EnvoysAI cloud</div>
+        </div>
+        <div class="flow-arrow">──▶</div>
+        <div class="flow-dest">PulpitOS receives file URL + metadata payload on "Distribute" trigger</div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-source envoys">EnvoysAI</div>
+        <div>
+          <div class="flow-data">Sermon Metadata Package</div>
+          <div class="flow-data-sub">Speaker, series, scripture, segment durations, date</div>
+        </div>
+        <div class="flow-arrow">──▶</div>
+        <div class="flow-dest">PulpitOS auto-tags content, builds archive entry, populates analytics</div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-source envoys">EnvoysAI</div>
+        <div>
+          <div class="flow-data">Media Assets (slides, backgrounds)</div>
+          <div class="flow-data-sub">Images, videos from the service media library</div>
+        </div>
+        <div class="flow-arrow">──▶</div>
+        <div class="flow-dest">PulpitOS attaches to content record; used in social graphics + website</div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-source bridge">Shared</div>
+        <div>
+          <div class="flow-data">Organization Context</div>
+          <div class="flow-data-sub">Church name, logo, denomination, timezone, branding</div>
+        </div>
+        <div class="flow-arrow">◀─▶</div>
+        <div class="flow-dest">Bi-directional — both products read and write. Single source of truth.</div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-source pulpit">PulpitOS</div>
+        <div>
+          <div class="flow-data">Content Performance Data</div>
+          <div class="flow-data-sub">Podcast plays, YouTube views, click-through, giving conversion</div>
+        </div>
+        <div class="flow-arrow">──▶</div>
+        <div class="flow-dest">Feeds back into EnvoysAI dashboard — "Last sermon: 4.2K views, ₦180K given"</div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-source pulpit">PulpitOS</div>
+        <div>
+          <div class="flow-data">Giving Records</div>
+          <div class="flow-data-sub">Per-service giving amounts, donor counts, recurring setup</div>
+        </div>
+        <div class="flow-arrow">──▶</div>
+        <div class="flow-dest">Visible in EnvoysAI post-service summary — reinforces "distribute = giving"</div>
+      </div>
+    </div>
+
+    <div class="callout bridge">
+      <p>The "Distribute" button is the most important piece of code in this entire system. It is not a feature — it is the product boundary, the upgrade trigger, and the revenue gate, all in one click.</p>
+    </div>
+
+    <h3>Technical Integration Model</h3>
+    <p>EnvoysAI calls PulpitOS via a lightweight internal API. If the church has a PulpitOS account, distribution is automatic. If they don't, the click surfaces the upgrade flow. This single endpoint is what makes the system feel seamless:</p>
+
+    <div style="background: var(--surface-2); border: 1px solid var(--border-em); padding: 20px; margin: 16px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-secondary); line-height: 1.8;">
+      <span style="color: var(--text-dim);">// EnvoysAI post-service API call</span><br>
+      POST /api/pulpitos/distribute<br>
+      {<br>
+      &nbsp;&nbsp;<span style="color: var(--pulpit);">"org_id"</span>: "church_xyz",<br>
+      &nbsp;&nbsp;<span style="color: var(--pulpit);">"recording_url"</span>: "https://cdn.envoys.ai/...",<br>
+      &nbsp;&nbsp;<span style="color: var(--pulpit);">"sermon"</span>: { speaker, series, scripture, duration },<br>
+      &nbsp;&nbsp;<span style="color: var(--pulpit);">"assets"</span>: [background, slides],<br>
+      &nbsp;&nbsp;<span style="color: var(--pulpit);">"service_date"</span>: "2026-03-29",<br>
+      &nbsp;&nbsp;<span style="color: var(--pulpit);">"pulpitos_token"</span>: "if_subscribed_else_null"<br>
+      }<br>
+      <br>
+      <span style="color: var(--text-dim);">// Response: if token null → return upgrade_url</span><br>
+      <span style="color: var(--text-dim);">// Response: if token valid → begin distribution job</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 2: PRODUCT BOUNDARY DEFINITION -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-marker">
+      <span class="section-num">02 —</span>
+      <h2 class="section-title">Product Boundary Definition</h2>
+      <span class="section-badge badge-envoys">Critical</span>
+    </div>
+
+    <p>This is not optional clarity — it is architectural discipline. Ambiguous boundaries cause duplicated features, confused users, and split engineering attention. These are the permanent, non-negotiable product boundaries.</p>
+
+    <div class="callout danger">
+      <p>The single biggest risk in this system is scope creep between products. If EnvoysAI starts doing analytics, or PulpitOS starts doing timers, the architecture collapses into one confusing product. Enforce these boundaries with prejudice.</p>
+    </div>
+
+    <div class="boundary-grid">
+      <div class="boundary-col">
+        <div class="boundary-header envoys-header">
+          <div>
+            <div class="boundary-header-title">EnvoysAI owns this — forever</div>
+            <div class="boundary-sub">Live service layer</div>
+          </div>
+        </div>
+        <ul class="boundary-items">
+          <li class="boundary-item">
+            <div class="bi-icon e">E</div>
+            <div class="bi-text">
+              <strong>Real-time Timer System</strong>
+              <span>Countdown, elapsed, target-time timers. Runs during live service. Never moves to PulpitOS.</span>
+            </div>
+          </li>
+          <li class="boundary-item">
+            <div class="bi-icon e">E</div>
+            <div class="bi-text">
+              <strong>Scene & Overlay Control</strong>
+              <span>Slide switching, scripture overlays, lower thirds. The live display layer.</span>
+            </div>
+          </li>
+          <li class="boundary-item">
+            <div class="bi-icon e">E</div>
+            <div class="bi-text">
+              <strong>OBS / Multi-Display Routing</strong>
+              <span>Audience, Stage, Stream view management. Hardware output layer.</span>
+            </div>
+          </li>
+          <li class="boundary-item">
+            <div class="bi-icon e">E</div>
+            <div class="bi-text">
+              <strong>Live Media Library</strong>
+              <span>In-service asset management — backgrounds, logos, slides. Upload and deploy during service.</span>
+            </div>
+          </li>
+          <li class="boundary-item">
+            <div class="bi-icon e">E</div>
+            <div class="bi-text">
+              <strong>Service Recording</strong>
+              <span>Capturing the service audio/video. EnvoysAI records it; PulpitOS distributes it.</span>
+            </div>
+          </li>
+          <li class="boundary-item">
+            <div class="bi-icon e">E</div>
+            <div class="bi-text">
+              <strong>Collaborative Operator Control</strong>
+              <span>Multi-operator sync, staging/preview mode, WebSocket real-time control. Sunday morning workflow.</span>
+            </div>
+          </li>
+          <li class="boundary-item">
+            <div class="bi-icon e">E</div>
+            <div class="bi-text">
+              <strong>Pre-Service Metadata Entry</strong>
+              <span>Speaker name, sermon title, scripture reference, series name. Set before service, handed to PulpitOS.</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="boundary-col">
+        <div class="boundary-header pulpit-header">
+          <div>
+            <div class="boundary-header-title">PulpitOS owns this — forever</div>
+            <div class="boundary-sub">Post-service infrastructure layer</div>
+          </div>
+        </div>
+        <ul class="boundary-items">
+          <li class="boundary-item">
+            <div class="bi-icon p">P</div>
+            <div class="bi-text">
+              <strong>Content Archive & Library</strong>
+              <span>Permanent sermon database with search, tagging, series management. The church's entire content history.</span>
+            </div>
+          </li>
+          <li class="boundary-item">
+            <div class="bi-icon p">P</div>
+            <div class="bi-text">
+              <strong>Distribution Pipeline</strong>
+              <span>Auto-publish to podcast RSS (Apple, Spotify), YouTube, WhatsApp, church website. The multi-channel push engine.</span>
+            </div>
+          </li>
+          <li class="boundary-item">
+            <div class="bi-icon p">P</div>
+            <div class="bi-text">
+              <strong>AI Content Repurposing</strong>
+              <span>Transcription, sermon notes, social captions, blog posts, devotional emails. The Anthropic API layer.</span>
+            </div>
+          </li>
+          <li class="boundary-item">
+            <div class="bi-icon p">P</div>
+            <div class="bi-text">
+              <strong>Giving Integration</strong>
+              <span>Paystack (Nigeria), Stripe (diaspora), recurring giving, giving links in content. The financial layer.</span>
+            </div>
+          </li>
+          <li class="boundary-item">
+            <div class="bi-icon p">P</div>
+            <div class="bi-text">
+              <strong>Analytics & Intelligence</strong>
+              <span>Cross-platform reach tracking, content performance, giving attribution, audience growth. The data layer.</span>
+            </div>
+          </li>
+          <li class="boundary-item">
+            <div class="bi-icon p">P</div>
+            <div class="bi-text">
+              <strong>Church Website Builder</strong>
+              <span>Auto-updated sermon page, event listings, giving widget. Built on PulpitOS content automatically.</span>
+            </div>
+          </li>
+          <li class="boundary-item">
+            <div class="bi-icon p">P</div>
+            <div class="bi-text">
+              <strong>Email & WhatsApp Automation</strong>
+              <span>"This Sunday's message" digest, giving receipts, subscriber management. The communications layer.</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 3: USER JOURNEY -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-marker">
+      <span class="section-num">03 —</span>
+      <h2 class="section-title">End-to-End User Journey</h2>
+      <span class="section-badge badge-envoys">Envoys → PulpitOS</span>
+    </div>
+
+    <p>The church's media director is the primary user. This is her full week — showing exactly where each product touches the workflow and precisely where the handoff happens.</p>
+
+    <div class="journey-map">
+
+      <div class="journey-time-row">
+        <div class="journey-time">Saturday<br>Evening</div>
+        <div class="journey-block envoys-block">
+          <div class="journey-block-tag">EnvoysAI — Service Prep</div>
+          <div class="journey-block-title">Pre-Service Configuration</div>
+          <div class="journey-block-detail">Media director opens EnvoysAI dashboard. Enters sermon metadata: speaker "Pastor Chukwuemeka", series "Covenant Life", scripture "John 15:1–8". Uploads background image and sets timer presets. Saves as this week's service template. PulpitOS receives this metadata draft immediately — no extra work.</div>
+        </div>
+      </div>
+
+      <div class="journey-time-row">
+        <div class="journey-time">Sunday<br>8:45 AM</div>
+        <div class="journey-block envoys-block">
+          <div class="journey-block-tag">EnvoysAI — Live Production</div>
+          <div class="journey-block-title">Service Goes Live</div>
+          <div class="journey-block-detail">EnvoysAI launches. Timer system runs segment-by-segment. Media team switches scenes, manages overlays, routes to Stage and Audience displays simultaneously. OBS receives the Stream view for YouTube Live. EnvoysAI quietly records the full service audio/video in the background. No one thinks about it — it just runs.</div>
+        </div>
+      </div>
+
+      <div class="journey-time-row">
+        <div class="journey-time">Sunday<br>11:30 AM</div>
+        <div class="journey-block neutral-block">
+          <div class="journey-block-tag">Service Ends</div>
+          <div class="journey-block-title">Recording Finalized — Metadata Complete</div>
+          <div class="journey-block-detail">Service ends. EnvoysAI has: a full recording, all segment timings, all metadata entered Saturday. Everything needed to publish is already captured. The media director sees a single prompt: <strong>"Service complete. Ready to distribute?"</strong></div>
+        </div>
+      </div>
+
+      <div class="handoff-marker">
+        <div class="handoff-line"></div>
+        <div class="handoff-label">⚡ THE HANDOFF MOMENT — Distribute Button</div>
+        <div class="handoff-line"></div>
+      </div>
+
+      <div class="journey-time-row">
+        <div class="journey-time">Sunday<br>11:35 AM</div>
+        <div class="journey-block bridge-block">
+          <div class="journey-block-tag">Integration Layer — API Bridge</div>
+          <div class="journey-block-title">EnvoysAI → PulpitOS Transfer</div>
+          <div class="journey-block-detail">One click. EnvoysAI packages the recording + metadata and sends to PulpitOS. If church has PulpitOS: distribution begins immediately. If not: upgrade prompt appears — "This would have been auto-distributed to your podcast, YouTube, and WhatsApp. Start free trial." For PulpitOS subscribers, the media director's job is done in 30 seconds post-service.</div>
+        </div>
+      </div>
+
+      <div class="journey-time-row">
+        <div class="journey-time">Sunday<br>12:00 PM</div>
+        <div class="journey-block pulpit-block">
+          <div class="journey-block-tag">PulpitOS — AI Processing</div>
+          <div class="journey-block-title">Transcription + Content Generation</div>
+          <div class="journey-block-detail">PulpitOS AI (Anthropic API) transcribes the sermon. Extracts key quotes, scripture references, main points. Generates: sermon notes PDF, 5 Instagram captions, 3 Twitter posts, 1 LinkedIn post, 800-word blog article, 4-week devotional email sequence. All with church branding. All ready for the media director to approve and publish. What used to be 8 hours of work is done automatically.</div>
+        </div>
+      </div>
+
+      <div class="journey-time-row">
+        <div class="journey-time">Sunday<br>2:00 PM</div>
+        <div class="journey-block pulpit-block">
+          <div class="journey-block-tag">PulpitOS — Distribution</div>
+          <div class="journey-block-title">Content Goes Everywhere Simultaneously</div>
+          <div class="journey-block-detail">Podcast episode published to Apple Podcasts + Spotify. YouTube video uploaded with auto-generated description and timestamps. WhatsApp broadcast sent to subscriber list with sermon link and giving button. Church website sermon page updated automatically. Email digest queued for Tuesday delivery. Giving link tracked per-sermon.</div>
+        </div>
+      </div>
+
+      <div class="journey-time-row">
+        <div class="journey-time">Monday–<br>Saturday</div>
+        <div class="journey-block pulpit-block">
+          <div class="journey-block-tag">PulpitOS — Analytics & Intelligence</div>
+          <div class="journey-block-title">Data Builds Over Time</div>
+          <div class="journey-block-detail">PulpitOS tracks: podcast downloads by location (diaspora vs local), YouTube retention rate per sermon topic, WhatsApp click-through rates, giving conversion per content type. Each week the data compounds. After 6 months: which sermon series drives the most giving? Which scripture topics grow the audience fastest? This intelligence feeds back into EnvoysAI to inform next Sunday's service planning.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="callout ok">
+      <p>The full loop takes the media director from "service complete" to "content fully distributed" in under 60 seconds of active work. The rest is automated. This is the product promise — and it is why churches will pay $149/month without flinching.</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 4: PRODUCT EVOLUTION ROADMAP -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-marker">
+      <span class="section-num">04 —</span>
+      <h2 class="section-title">Product Evolution Roadmap</h2>
+      <span class="section-badge badge-pulpit">0 → 12 Months</span>
+    </div>
+
+    <p>This is a sequenced execution plan, not a wish list. Each phase has a single primary objective. Anything that doesn't serve that objective is cut.</p>
+
+    <div class="roadmap-phases">
+
+      <div class="roadmap-phase">
+        <div class="phase-head">
+          <div class="phase-timing" style="border-left: 3px solid var(--envoys);">
+            <div class="phase-timing-label">Phase 1</div>
+            <div class="phase-timing-range">Days 0 – 30</div>
+            <div class="phase-timing-name">Stabilize + Distribute</div>
+          </div>
+          <div class="phase-content">
+            <div class="phase-content-title">Objective: Make EnvoysAI distributable. Ship the "Distribute" button.</div>
+            <div class="phase-tasks">
+              <div class="task-group">
+                <div class="task-group-label envoys-label">Build in EnvoysAI</div>
+                <ul class="task-list">
+                  <li><strong>Pre-service metadata form</strong> — speaker, series, scripture, date</li>
+                  <li><strong>Service recording</strong> — audio capture via MediaRecorder API or server-side</li>
+                  <li><strong>"Distribute" button</strong> — surfaces at end of service</li>
+                  <li><strong>Upgrade prompt flow</strong> — shown when PulpitOS token is null</li>
+                  <li>Stable production deployments for 5+ churches</li>
+                </ul>
+              </div>
+              <div class="task-group">
+                <div class="task-group-label avoid-label">Do NOT Build</div>
+                <ul class="task-list avoid">
+                  <li>Analytics dashboards of any kind</li>
+                  <li>Social media publishing features in EnvoysAI</li>
+                  <li>Mobile apps</li>
+                  <li>Payment features in EnvoysAI</li>
+                  <li>PulpitOS itself (not yet)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="roadmap-phase">
+        <div class="phase-head">
+          <div class="phase-timing" style="border-left: 3px solid var(--bridge);">
+            <div class="phase-timing-label">Phase 2</div>
+            <div class="phase-timing-range">Days 30 – 90</div>
+            <div class="phase-timing-name">PulpitOS v0.1</div>
+          </div>
+          <div class="phase-content">
+            <div class="phase-content-title">Objective: Build the minimum PulpitOS that creates real value. First paying customers.</div>
+            <div class="phase-tasks">
+              <div class="task-group">
+                <div class="task-group-label pulpit-label">Build in PulpitOS</div>
+                <ul class="task-list">
+                  <li><strong>Organization onboarding</strong> — church name, logo, social accounts</li>
+                  <li><strong>Receive EnvoysAI payload</strong> — ingest recording + metadata</li>
+                  <li><strong>AI transcription</strong> — Whisper API, auto-tagging</li>
+                  <li><strong>Podcast RSS generation</strong> — Apple + Spotify compliant</li>
+                  <li><strong>Sermon archive page</strong> — church-branded, public URL</li>
+                  <li><strong>WhatsApp broadcast</strong> — new sermon notification to subscriber list</li>
+                  <li><strong>Paystack giving link</strong> — embedded per sermon</li>
+                </ul>
+              </div>
+              <div class="task-group">
+                <div class="task-group-label envoys-label">Also: EnvoysAI</div>
+                <ul class="task-list">
+                  <li>Show last sermon stats in dashboard (plays, giving)</li>
+                  <li>Fix production bugs from real church usage</li>
+                  <li>Expand to 15–20 active churches (still free or $0–29)</li>
+                  <li>Charge first PulpitOS customers: $99/mo introductory</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="roadmap-phase">
+        <div class="phase-head">
+          <div class="phase-timing" style="border-left: 3px solid var(--pulpit);">
+            <div class="phase-timing-label">Phase 3</div>
+            <div class="phase-timing-range">3 – 6 Months</div>
+            <div class="phase-timing-name">Distribution + Monetization</div>
+          </div>
+          <div class="phase-content">
+            <div class="phase-content-title">Objective: Full distribution stack live. Giving integration generating transaction revenue.</div>
+            <div class="phase-tasks">
+              <div class="task-group">
+                <div class="task-group-label pulpit-label">Build in PulpitOS</div>
+                <ul class="task-list">
+                  <li><strong>YouTube auto-publish</strong> — OAuth + video upload API</li>
+                  <li><strong>AI content generation</strong> — captions, blog posts, devotionals (Anthropic API)</li>
+                  <li><strong>Church website builder</strong> — auto-updating sermon page, events</li>
+                  <li><strong>Stripe giving</strong> — diaspora churches (UK, US)</li>
+                  <li><strong>Recurring giving</strong> — tithe/offering subscriptions</li>
+                  <li><strong>Email automation</strong> — weekly sermon digest, subscriber management</li>
+                  <li><strong>Basic analytics</strong> — podcast plays, YouTube views, giving totals</li>
+                </ul>
+              </div>
+              <div class="task-group">
+                <div class="task-group-label both-label">Revenue Target</div>
+                <ul class="task-list">
+                  <li>10 paying PulpitOS churches at $149/mo = <strong>$1,490 MRR</strong></li>
+                  <li>Giving transactions: 1.5% on ₦5M/mo = <strong>₦75K/mo</strong></li>
+                  <li>EnvoysAI: 50 churches free, 15 at $29/mo = <strong>$435 MRR</strong></li>
+                  <li>Total: ~$2K MRR — proof of unit economics</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="roadmap-phase">
+        <div class="phase-head">
+          <div class="phase-timing" style="border-left: 3px solid var(--ok);">
+            <div class="phase-timing-label">Phase 4</div>
+            <div class="phase-timing-range">6 – 12 Months</div>
+            <div class="phase-timing-name">Platform + Network Effects</div>
+          </div>
+          <div class="phase-content">
+            <div class="phase-content-title">Objective: First denomination deal. Cross-church data becomes valuable. Raise pre-seed.</div>
+            <div class="phase-tasks">
+              <div class="task-group">
+                <div class="task-group-label pulpit-label">Build in PulpitOS</div>
+                <ul class="task-list">
+                  <li><strong>Cross-church benchmarking</strong> — anonymous "churches like you" analytics</li>
+                  <li><strong>Church directory + discovery</strong> — find other PulpitOS churches</li>
+                  <li><strong>Media asset marketplace</strong> — sell/share slide templates across churches</li>
+                  <li><strong>DenominationOS tier</strong> — network-wide content dashboard, $500–5K/mo</li>
+                  <li><strong>Diaspora streaming</strong> — HomePew integration (watch your home church live)</li>
+                  <li><strong>API for integrations</strong> — Planning Center, ChurchSuite compatibility</li>
+                </ul>
+              </div>
+              <div class="task-group">
+                <div class="task-group-label both-label">Scale Target</div>
+                <ul class="task-list">
+                  <li>100+ churches on EnvoysAI (free → conversion funnel)</li>
+                  <li>40–50 paying PulpitOS churches at $149 avg = <strong>~$7K MRR</strong></li>
+                  <li>1–2 denomination deals at $500/mo = <strong>$1K MRR</strong></li>
+                  <li>Giving transactions compounding</li>
+                  <li>Total: <strong>$10K+ MRR</strong> — seed-fundable</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 5: HOOK MECHANISM -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-marker">
+      <span class="section-num">05 —</span>
+      <h2 class="section-title">The Hook Mechanism</h2>
+      <span class="section-badge badge-bridge">Conversion Engine</span>
+    </div>
+
+    <p>The hook is not a pricing page or a feature comparison table. It is a <strong>moment of felt pain</strong> — the instant the media director experiences what post-service distribution looks like without PulpitOS, and cannot unsee it.</p>
+
+    <div class="hook-diagram">
+      <div class="arch-label" style="margin-bottom: 20px;">// The Exact Conversion Sequence</div>
+
+      <div class="hook-steps">
+        <div class="hook-step">
+          <div class="hook-step-num">STEP 01</div>
+          <div class="hook-step-title">Service ends. Recording ready.</div>
+          <div class="hook-step-text">EnvoysAI shows a post-service summary card: service duration, segment breakdown, recording file ready. Everything looks clean and professional.</div>
+        </div>
+        <div class="hook-step">
+          <div class="hook-step-num">STEP 02</div>
+          <div class="hook-step-title">"Distribute This Service" button appears.</div>
+          <div class="hook-step-text">Prominent, primary-action button. Unavoidable. Media director clicks it instinctively — it's the natural next action after a service ends.</div>
+        </div>
+        <div class="hook-step">
+          <div class="hook-step-num">STEP 03</div>
+          <div class="hook-step-title">PulpitOS preview loads.</div>
+          <div class="hook-step-text">A preview modal shows exactly what would happen: "This sermon would be published to your podcast, YouTube, WhatsApp (847 subscribers), and your website — with notes and captions generated — in under 5 minutes." All grayed out. The church can see it but can't touch it.</div>
+        </div>
+        <div class="hook-step">
+          <div class="hook-step-num">STEP 04</div>
+          <div class="hook-step-title">The cost of NOT subscribing is made visible.</div>
+          <div class="hook-step-text">"Without PulpitOS, this recording will sit on your server. Your 847 WhatsApp subscribers won't know about it until someone manually sends them a link. The sermon that 400 people just heard will reach 0 more people today." This is the pain point. It's real. It's immediate.</div>
+        </div>
+        <div class="hook-step">
+          <div class="hook-step-num">STEP 05</div>
+          <div class="hook-step-title">Frictionless upgrade at the exact right moment.</div>
+          <div class="hook-step-text">Single click: "Start 14-day free trial — no credit card." After trial: $149/month or $1,490/year (2 months free). The upgrade happens when the pain is highest — Sunday afternoon, still in the momentum of service day.</div>
+        </div>
+        <div class="hook-step">
+          <div class="hook-step-num">STEP 06</div>
+          <div class="hook-step-title">First distribution is magic.</div>
+          <div class="hook-step-text">Within 15 minutes of subscribing: podcast live, YouTube uploaded, WhatsApp sent, website updated, sermon notes in their inbox. The media director has never seen this happen automatically. She tells three other media directors that same afternoon.</div>
+        </div>
+      </div>
+
+      <div class="hook-moment">
+        <div class="hook-moment-label">The Conversion Trigger — One Sentence</div>
+        <div class="hook-moment-text">"Your sermon is ready. 400 people heard it live. PulpitOS will make sure 4,000 hear it this week — or you can do it manually."</div>
+      </div>
+    </div>
+
+    <h3>Secondary Hook Triggers</h3>
+    <ul class="plain-list">
+      <li><strong>The analytics gap:</strong> EnvoysAI dashboard shows "Last sermon: distributed" vs churches without PulpitOS seeing nothing — social proof inside the product.</li>
+      <li><strong>The giving prompt:</strong> EnvoysAI shows "Churches using PulpitOS giving received an average of ₦340K last Sunday." Zero-upgrade churches see this every week.</li>
+      <li><strong>The whatsapp preview:</strong> EnvoysAI sends a preview WhatsApp to the media director's own phone showing what the automated broadcast would look like. Visceral. Immediate.</li>
+      <li><strong>Peer pressure via network:</strong> "4 churches in your district are on PulpitOS. See their growth stats." This becomes available once cross-church data accumulates.</li>
+    </ul>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 6: MONETIZATION DESIGN -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-marker">
+      <span class="section-num">06 —</span>
+      <h2 class="section-title">Monetization Design</h2>
+      <span class="section-badge badge-pulpit">Revenue Architecture</span>
+    </div>
+
+    <p>The pricing architecture is designed on one principle: <strong>the entry must be frictionless, and the expansion must be inevitable.</strong> You do not convince churches to pay — you make the cost of not paying too obvious to ignore.</p>
+
+    <div class="pricing-grid">
+      <div class="pricing-col">
+        <div class="pricing-header e">
+          <div class="pricing-product">EnvoysAI</div>
+          <div class="pricing-purpose">Distribution Engine — not the revenue product</div>
+        </div>
+        <div class="pricing-tiers">
+          <div class="pricing-tier">
+            <div>
+              <div class="tier-name">Free — Forever</div>
+              <div class="tier-desc">Full timer system, scene control, OBS integration, multi-display routing, 1 operator. No recording. No distribution button. The full production tool.</div>
+            </div>
+            <div class="tier-price envoys-price">$0</div>
+          </div>
+          <div class="pricing-tier">
+            <div>
+              <div class="tier-name">Pro — Per Church</div>
+              <div class="tier-desc">Everything free + service recording, multi-operator sync, the "Distribute" button with PulpitOS integration, advanced presets. For churches that want recording.</div>
+            </div>
+            <div class="tier-price envoys-price">$29<br><span style="font-size:9px; color: var(--text-dim);">/month</span></div>
+          </div>
+          <div class="pricing-tier" style="background: var(--envoys-glow);">
+            <div>
+              <div class="tier-name">⚡ Strategic Note</div>
+              <div class="tier-desc">EnvoysAI pricing is intentionally suppressed. The goal is maximum distribution into churches — not EnvoysAI revenue. Revenue comes from PulpitOS. Do not raise EnvoysAI prices prematurely.</div>
+            </div>
+            <div class="tier-price envoys-price" style="color: var(--text-dim);">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pricing-col">
+        <div class="pricing-header p">
+          <div class="pricing-product">PulpitOS</div>
+          <div class="pricing-purpose">The real revenue product</div>
+        </div>
+        <div class="pricing-tiers">
+          <div class="pricing-tier">
+            <div>
+              <div class="tier-name">Starter</div>
+              <div class="tier-desc">Podcast RSS, sermon archive page, WhatsApp broadcast, Paystack giving link, basic analytics. For small to mid-size churches getting started with distribution.</div>
+            </div>
+            <div class="tier-price pulpit-price">₦60K<br><span style="font-size:9px; color: var(--text-dim);">~$40/mo</span></div>
+          </div>
+          <div class="pricing-tier" style="background: var(--pulpit-glow); border-left: 2px solid var(--pulpit);">
+            <div>
+              <div class="tier-name">Growth — Most Popular</div>
+              <div class="tier-desc">Everything Starter + YouTube publish, AI content generation (captions/blog/notes), email automation, church website, Stripe giving (diaspora), advanced analytics.</div>
+            </div>
+            <div class="tier-price pulpit-price">$149<br><span style="font-size:9px; color: var(--text-dim);">/month</span></div>
+          </div>
+          <div class="pricing-tier">
+            <div>
+              <div class="tier-name">Scale</div>
+              <div class="tier-desc">Everything Growth + multi-campus, white-label, API access, custom integrations, priority support. For large churches and multi-branch operations.</div>
+            </div>
+            <div class="tier-price pulpit-price">$299<br><span style="font-size:9px; color: var(--text-dim);">/month</span></div>
+          </div>
+          <div class="pricing-tier">
+            <div>
+              <div class="tier-name">DenominationOS</div>
+              <div class="tier-desc">Network dashboard, content distribution across all affiliated parishes, aggregate analytics, denomination media library, bulk church management. Annual contract.</div>
+            </div>
+            <div class="tier-price pulpit-price">$500–5K<br><span style="font-size:9px; color: var(--text-dim);">/month</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Revenue Streams Beyond SaaS</h3>
+
+    <div class="rev-model">
+      <div class="rev-stream">
+        <div class="rev-stream-label">Giving Transaction Fee</div>
+        <div class="rev-stream-amount">1.5%</div>
+        <div class="rev-stream-desc">On every Paystack + Stripe giving transaction processed through PulpitOS. Each church doing ₦5M/month = ₦75K revenue. 50 churches = ₦3.75M/month passive.</div>
+      </div>
+      <div class="rev-stream">
+        <div class="rev-stream-label">AI Add-on Usage</div>
+        <div class="rev-stream-amount">$29+/mo</div>
+        <div class="rev-stream-desc">Additional AI generation credits beyond the included quota. High-usage churches (multiple services per week) will hit limits and upgrade. Pure margin.</div>
+      </div>
+      <div class="rev-stream">
+        <div class="rev-stream-label">Media Marketplace</div>
+        <div class="rev-stream-amount">20% cut</div>
+        <div class="rev-stream-desc">Churches sell slide templates, motion backgrounds, sermon series graphics to other churches. PulpitOS takes 20%. Builds network effects — every seller markets the platform.</div>
+      </div>
+      <div class="rev-stream">
+        <div class="rev-stream-label">Diaspora Streaming</div>
+        <div class="rev-stream-amount">$9.99/mo</div>
+        <div class="rev-stream-desc">Consumer subscription for diaspora members to live-stream their home church. Revenue split with church (70/30). Extremely high retention — emotional product.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 7: DATA & MOAT STRATEGY -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-marker">
+      <span class="section-num">07 —</span>
+      <h2 class="section-title">Data & Moat Strategy</h2>
+      <span class="section-badge badge-ok">Defensibility</span>
+    </div>
+
+    <p>Data moats are built through volume and time. You need both. The strategy is to <strong>own data no one else is collecting</strong> — and make it more valuable as more churches join. Here is what you will own, and why no one else can replicate it.</p>
+
+    <table class="moat-table">
+      <thead>
+        <tr>
+          <th>Data Asset</th>
+          <th>What It Contains</th>
+          <th>Why It's Valuable</th>
+          <th>Moat Strength</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Sermon Content Archive</td>
+          <td>Full transcriptions, metadata, series structure, scripture references for thousands of sermons across hundreds of churches</td>
+          <td>Proprietary NLP training corpus for church-specific AI. No competitor has this without replicating your installed base.</td>
+          <td>VERY HIGH</td>
+        </tr>
+        <tr>
+          <td>Service Operational Data</td>
+          <td>Real segment timing data — how long do sermons actually run in Lagos vs London? How often do timers overrun? What's the average Nigerian service length by denomination?</td>
+          <td>Benchmarking intelligence that makes EnvoysAI smarter over time. No one else has this data at scale.</td>
+          <td>HIGH</td>
+        </tr>
+        <tr>
+          <td>Content-to-Giving Correlation</td>
+          <td>Which sermon topics, series types, and scripture references correlate with highest post-service giving? This is the most commercially sensitive data in church-tech.</td>
+          <td>Tells churches how to structure their content for maximum generosity response. An AI giving advisor that no individual church could build alone.</td>
+          <td>EXTREME</td>
+        </tr>
+        <tr>
+          <td>Cross-Platform Audience Graph</td>
+          <td>Aggregate reach data — podcast + YouTube + WhatsApp + website — per church, per region, per denomination</td>
+          <td>Benchmarking: "Your podcast is in the top 20% for Nigerian Pentecostal churches." Helps churches understand their actual digital footprint vs their perception of it.</td>
+          <td>HIGH</td>
+        </tr>
+        <tr>
+          <td>Church Branding Library</td>
+          <td>Logos, fonts, colors, design preferences for each church — stored and reused automatically</td>
+          <td>Creates aesthetic lock-in. Switching to a competitor means re-uploading and re-configuring everything. Low effort for you to maintain; high effort for them to leave.</td>
+          <td>MEDIUM — Switching Cost</td>
+        </tr>
+        <tr>
+          <td>Subscriber/Audience Lists</td>
+          <td>WhatsApp, email, podcast subscriber lists owned by each church within PulpitOS</td>
+          <td>This is the church's audience. If it lives in PulpitOS, the church does not leave. Switching means losing contact with their own people — unacceptable.</td>
+          <td>EXTREME — Primary Lock-in</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout ok">
+      <p>The subscriber list is your most powerful lock-in mechanism. Once a church's 2,000 WhatsApp subscribers and 800 email subscribers are managed through PulpitOS — migrating away means manually exporting data and re-importing into a new tool. Most churches will never do this. It is existential switching cost.</p>
+    </div>
+
+    <h3>How Competitors Lose</h3>
+    <ul class="plain-list">
+      <li><strong>US competitors (Subsplash, Pushpay):</strong> USD-priced, Western-designed, no understanding of the Nigerian church context, Paystack integration, or diaspora giving dynamics. They cannot enter your market without years of re-engineering.</li>
+      <li><strong>Generic tools (Mailchimp, Buzzsprout, YouTube):</strong> They don't know what a church is. They can't bundle service control + content + giving + analytics in one product designed for a media director who has 30 minutes post-service.</li>
+      <li><strong>New entrants:</strong> To replicate your data moat, they need your installed base. To get your installed base, they need your distribution (EnvoysAI in 200 churches). To get EnvoysAI in 200 churches, they need 2–3 years. You have a 2–3 year head start if you move now.</li>
+    </ul>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 8: MVP SIMPLIFICATION -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-marker">
+      <span class="section-num">08 —</span>
+      <h2 class="section-title">MVP Simplification</h2>
+      <span class="section-badge badge-ok">Solo Founder Edition</span>
+    </div>
+
+    <p>If you have limited time, no team, and need to execute with zero waste — here is the minimum version of this system that still works. Everything else is deferred.</p>
+
+    <div class="callout bridge">
+      <p>The MVP test: does this create the hook? Can a church go from "service complete" to "content distributed and giving enabled" in under 5 minutes? If yes, it's enough to charge $149/month and grow. If no, keep building.</p>
+    </div>
+
+    <div class="mvp-grid">
+      <div class="mvp-cell">
+        <div class="mvp-cell-label build">Build Immediately — EnvoysAI</div>
+        <ul class="task-list">
+          <li>Pre-service metadata form (5 fields: title, speaker, series, scripture, date)</li>
+          <li>Simple audio recording — MediaRecorder API, saved to Supabase storage</li>
+          <li>Post-service "Distribute" button with upgrade prompt modal</li>
+          <li>Stable, reliable timer + scene system (already built — maintain only)</li>
+        </ul>
+      </div>
+      <div class="mvp-cell">
+        <div class="mvp-cell-label build">Build Immediately — PulpitOS</div>
+        <ul class="task-list">
+          <li>Receive EnvoysAI payload (org_id, recording_url, metadata)</li>
+          <li>Whisper API transcription → store in Supabase</li>
+          <li>Generate podcast RSS feed — just the XML, Apple/Spotify compliant</li>
+          <li>Paystack giving link generated per sermon — embedded in WhatsApp message</li>
+          <li>WhatsApp broadcast via WhatsApp Business API to stored subscriber list</li>
+          <li>Simple sermon archive page — Next.js, church-branded, public URL</li>
+        </ul>
+      </div>
+      <div class="mvp-cell">
+        <div class="mvp-cell-label skip">Do NOT Build in MVP</div>
+        <ul class="task-list avoid">
+          <li>YouTube auto-publish (use direct upload link instead)</li>
+          <li>AI content generation (generate manually at first, automate later)</li>
+          <li>Church website builder (use a static page)</li>
+          <li>Analytics dashboard (manually check Supabase data)</li>
+          <li>Stripe integration (Paystack only for MVP)</li>
+          <li>Mobile app of any kind</li>
+          <li>Denomination features</li>
+        </ul>
+      </div>
+      <div class="mvp-cell">
+        <div class="mvp-cell-label defer">Defer to Phase 3</div>
+        <ul class="task-list">
+          <li>Email digest automation</li>
+          <li>AI caption and blog generation</li>
+          <li>YouTube OAuth integration</li>
+          <li>Cross-church benchmarking</li>
+          <li>Stripe / diaspora giving</li>
+          <li>Advanced analytics</li>
+          <li>Media marketplace</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout ok">
+      <p>The MVP you need to build is: recording + podcast RSS + WhatsApp broadcast + Paystack giving link. That is four features. That is what earns you the right to charge $99–149/month. Everything else is Phase 2.</p>
+    </div>
+
+    <h3>Technology Stack for MVP (Your Exact Stack)</h3>
+    <ul class="plain-list">
+      <li><strong>EnvoysAI:</strong> Already built. Add metadata form + MediaRecorder + POST to PulpitOS API endpoint.</li>
+      <li><strong>PulpitOS:</strong> Next.js + Supabase (already your stack). Podcast RSS = a Next.js API route that generates XML. WhatsApp = WhatsApp Business API (free tier covers MVP). Transcription = OpenAI Whisper API ($0.006/minute = ~$0.30 per 50-minute sermon). Giving = Paystack embed.</li>
+      <li><strong>Hosting:</strong> Vercel for both. One codebase, separate deployments.</li>
+      <li><strong>Estimated build time:</strong> 4–6 weeks solo, working focused hours. You already know all the technologies.</li>
+    </ul>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 9: RISKS & FAILURE POINTS -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-marker">
+      <span class="section-num">09 —</span>
+      <h2 class="section-title">Risks & Failure Points</h2>
+      <span class="section-badge badge-danger">Brutal Honesty</span>
+    </div>
+
+    <p>These are not theoretical risks. These are the specific ways this strategy fails — ordered by severity. Know them before they happen.</p>
+
+    <ul class="risk-list">
+
+      <li class="risk-item">
+        <span class="risk-num">01</span>
+        <span class="risk-level fatal">Fatal</span>
+        <div>
+          <div class="risk-content-title">Trying to build both products simultaneously as a solo founder</div>
+          <div class="risk-content-desc">You will build two half-products instead of one complete one. Both will feel unfinished. Neither will convert churches. The most common early-stage killer for multi-product ambitions. You must complete Phase 1 (EnvoysAI stabilization + Distribute button) before writing a single line of PulpitOS code.</div>
+          <div class="risk-mitigation">Mitigation: Strict sequential phases. PulpitOS doesn't start until EnvoysAI has 10+ active churches and the Distribute button is live and tested.</div>
+        </div>
+      </li>
+
+      <li class="risk-item">
+        <span class="risk-num">02</span>
+        <span class="risk-level fatal">Fatal</span>
+        <div>
+          <div class="risk-content-title">Raising EnvoysAI pricing before PulpitOS exists</div>
+          <div class="risk-content-desc">If you charge $99/month for EnvoysAI before PulpitOS is live, churches will evaluate it as a standalone production tool — and most will choose ProPresenter or free alternatives. You lose the distribution advantage before it compounds. EnvoysAI must stay cheap or free until PulpitOS is ready to be the real offer.</div>
+          <div class="risk-mitigation">Mitigation: EnvoysAI stays at $0–29 until PulpitOS Growth tier is live and generating revenue.</div>
+        </div>
+      </li>
+
+      <li class="risk-item">
+        <span class="risk-num">03</span>
+        <span class="risk-level high">High</span>
+        <div>
+          <div class="risk-content-title">Building for the pastor instead of the media director</div>
+          <div class="risk-content-desc">The pastor approves the budget. The media director uses the product every Sunday. If your UX is designed for a pastor (who looks at it once a month), it will fail the media director (who uses it under pressure every week). Every design decision must be made for the person operating the system at 9 AM on Sunday, not the person signing the cheque.</div>
+          <div class="risk-mitigation">Mitigation: Every feature decision tested with one question: "Does this help the media director on Sunday morning?" If no — cut it.</div>
+        </div>
+      </li>
+
+      <li class="risk-item">
+        <span class="risk-num">04</span>
+        <span class="risk-level high">High</span>
+        <div>
+          <div class="risk-content-title">WhatsApp Business API reliability failures at scale</div>
+          <div class="risk-content-desc">WhatsApp is the primary distribution channel for Nigerian churches. The WhatsApp Business API has rate limits, number verification requirements, and can be suspended without warning. If distribution fails on Sunday afternoon, you lose trust at the worst possible moment. This is an infrastructure dependency you must manage carefully.</div>
+          <div class="risk-mitigation">Mitigation: Build email as a parallel channel from day one. Test WhatsApp at full load before promising it to paying customers. Have a fallback SMS layer for critical notifications.</div>
+        </div>
+      </li>
+
+      <li class="risk-item">
+        <span class="risk-num">05</span>
+        <span class="risk-level high">High</span>
+        <div>
+          <div class="risk-content-title">Charging before proving the core value loop</div>
+          <div class="risk-content-desc">The PulpitOS value loop is: distribute sermon → audience grows → giving increases → church grows → they tell other churches. If you charge before this loop is proven to work (i.e., before a church can point to real growth from PulpitOS), you'll have high churn. Churches need to feel the product working before they feel okay paying for it monthly.</div>
+          <div class="risk-mitigation">Mitigation: Offer a 14-day free trial. Run your first 5 PulpitOS churches free for 3 months to prove the loop. Collect giving data and audience growth stats. Use these as the case study for charging.</div>
+        </div>
+      </li>
+
+      <li class="risk-item">
+        <span class="risk-num">06</span>
+        <span class="risk-level high">High</span>
+        <div>
+          <div class="risk-content-title">Anchor church dependency — one flagship church = too much of your identity</div>
+          <div class="risk-content-desc">If you land Daystar or Covenant early and build features specifically for their workflow, you create a product that fits one large church and nobody else. The product must be designed for the median church (200–1,000 members, 2–5 person media team, limited technical sophistication) — not for the outlier.</div>
+          <div class="risk-mitigation">Mitigation: Use flagship churches for credibility only. Do not build custom features for them. Keep them on the standard product.</div>
+        </div>
+      </li>
+
+      <li class="risk-item">
+        <span class="risk-num">07</span>
+        <span class="risk-level medium">Medium</span>
+        <div>
+          <div class="risk-content-title">Recording quality failures creating distribution embarrassment</div>
+          <div class="risk-content-desc">If a church records a service through PulpitOS and it's published with poor audio quality, they will blame PulpitOS — not their own microphone setup. Distribution amplifies both quality and problems. A bad recording reaching 2,000 people is worse than a bad recording reaching 0.</div>
+          <div class="risk-mitigation">Mitigation: Build a pre-publish quality check (audio level analysis, duration validation). Offer best-practice guides for recording setup. Set expectation that PulpitOS distributes; the church is responsible for what it distributes.</div>
+        </div>
+      </li>
+
+      <li class="risk-item">
+        <span class="risk-num">08</span>
+        <span class="risk-level medium">Medium</span>
+        <div>
+          <div class="risk-content-title">Scope creep between products creating UX confusion</div>
+          <div class="risk-content-desc">As PulpitOS grows, there will be pressure to add analytics to EnvoysAI. As EnvoysAI grows, there will be pressure to add giving to the live view. Both will blur the product boundaries and confuse users about which product does what. The clarity of "EnvoysAI = live service, PulpitOS = after service" is a competitive advantage — protect it.</div>
+          <div class="risk-mitigation">Mitigation: For every new feature, explicitly state which product it belongs to in the product spec. If it fits both, it belongs in PulpitOS with an EnvoysAI integration point.</div>
+        </div>
+      </li>
+
+    </ul>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="doc-footer">
+    <p>EnvoysAI + PulpitOS — Product Architecture Blueprint v1.0</p>
+    <p>March 2026 — Principal Architecture Review</p>
+    <p>Confidential — Founder Use Only</p>
+  </div>
+
+</div>
+</body>
+</html>

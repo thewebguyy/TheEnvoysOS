@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Envoys AI — Strategic Product Decision Memo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;700;800&display=swap');
+
+  :root {
+    --void: #080808;
+    --charcoal: #111111;
+    --slate-dark: #1a1a1a;
+    --border: rgba(255,255,255,0.07);
+    --border-em: rgba(255,255,255,0.14);
+    --text: #d4cfc8;
+    --text-dim: #7a7570;
+    --text-bright: #f0ebe4;
+    --gold: #c9a84c;
+    --gold-dim: rgba(201,168,76,0.15);
+    --red: #c94c4c;
+    --red-dim: rgba(201,76,76,0.12);
+    --green: #4cad7a;
+    --green-dim: rgba(76,173,122,0.12);
+    --blue: #4c7ec9;
+    --blue-dim: rgba(76,126,201,0.12);
+    --amber: #c97d4c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--void);
+    color: var(--text);
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    line-height: 1.8;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 32px 120px;
+  }
+
+  /* COVER */
+  .cover {
+    padding: 80px 0 64px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 64px;
+    position: relative;
+  }
+
+  .cover::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -32px; right: -32px; height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+    opacity: 0.4;
+  }
+
+  .memo-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .memo-tag::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, var(--border-em), transparent);
+  }
+
+  .cover-title {
+    font-family: 'Libre Baskerville', serif;
+    font-size: clamp(36px, 5vw, 58px);
+    font-weight: 700;
+    color: var(--text-bright);
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 20px;
+  }
+
+  .cover-title em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  .cover-sub {
+    font-size: 16px;
+    color: var(--text-dim);
+    max-width: 560px;
+    line-height: 1.6;
+    margin-bottom: 40px;
+  }
+
+  .meta-strip {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .meta-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+
+  .meta-value {
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* VERDICT BANNER */
+  .verdict-banner {
+    background: var(--green-dim);
+    border: 1px solid rgba(76,173,122,0.3);
+    border-left: 4px solid var(--green);
+    padding: 28px 32px;
+    margin-bottom: 64px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  .verdict-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--green);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .verdict-text {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: -0.5px;
+  }
+
+  .verdict-pill {
+    background: var(--green);
+    color: #000;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    white-space: nowrap;
+  }
+
+  /* SECTIONS */
+  .section {
+    margin-bottom: 72px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--gold);
+    letter-spacing: 1px;
+    margin-top: 8px;
+    min-width: 32px;
+  }
+
+  .section-title {
+    font-family: 'Libre Baskerville', serif;
+    font-size: clamp(20px, 3vw, 28px);
+    font-weight: 700;
+    color: var(--text-bright);
+    line-height: 1.2;
+    letter-spacing: -0.3px;
+  }
+
+  .section-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    font-style: italic;
+  }
+
+  /* PROSE */
+  p {
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.85;
+    margin-bottom: 16px;
+  }
+
+  p:last-child { margin-bottom: 0; }
+
+  .lead {
+    font-size: 16px;
+    color: var(--text-bright);
+    line-height: 1.7;
+    font-family: 'Libre Baskerville', serif;
+    font-style: italic;
+  }
+
+  strong {
+    color: var(--text-bright);
+    font-weight: 700;
+  }
+
+  /* CALLOUT */
+  .callout {
+    border-left: 3px solid var(--gold);
+    padding: 16px 24px;
+    margin: 28px 0;
+    background: var(--gold-dim);
+  }
+
+  .callout p {
+    font-family: 'Libre Baskerville', serif;
+    font-style: italic;
+    font-size: 15px;
+    color: var(--text-bright);
+    line-height: 1.65;
+  }
+
+  .callout cite {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    text-transform: uppercase;
+    display: block;
+    margin-top: 8px;
+  }
+
+  .callout.danger {
+    border-left-color: var(--red);
+    background: var(--red-dim);
+  }
+
+  .callout.danger p { color: #e8a0a0; }
+  .callout.danger cite { color: var(--red); }
+
+  .callout.success {
+    border-left-color: var(--green);
+    background: var(--green-dim);
+  }
+
+  .callout.success p { color: #a0e8c4; }
+  .callout.success cite { color: var(--green); }
+
+  /* DNA TABLE */
+  .dna-grid {
+    display: grid;
+    gap: 1px;
+    background: var(--border);
+    margin: 24px 0;
+  }
+
+  .dna-row {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .dna-label {
+    background: var(--slate-dark);
+    padding: 14px 18px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--gold);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+  }
+
+  .dna-value {
+    background: var(--charcoal);
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .dna-value .badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    padding: 3px 8px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  .badge-red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(201,76,76,0.3); }
+  .badge-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(76,173,122,0.3); }
+  .badge-gold { background: var(--gold-dim); color: var(--gold); border: 1px solid rgba(201,168,76,0.3); }
+  .badge-blue { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(76,126,201,0.3); }
+  .badge-amber { background: rgba(201,125,76,0.12); color: var(--amber); border: 1px solid rgba(201,125,76,0.3); }
+
+  /* PATH COMPARISON */
+  .path-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    background: var(--border);
+    margin: 24px 0;
+  }
+
+  .path-card {
+    background: var(--charcoal);
+    padding: 28px;
+  }
+
+  .path-header {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .path-title {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 6px;
+  }
+
+  .path-a .path-header { color: var(--amber); }
+  .path-b .path-header { color: var(--red); }
+  .path-hybrid .path-header { color: var(--green); }
+
+  .metric-list {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0;
+  }
+
+  .metric-list li {
+    font-size: 13px;
+    color: var(--text);
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .metric-list li:last-child { border-bottom: none; }
+
+  .metric-key {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+
+  .metric-val {
+    font-weight: 700;
+    color: var(--text-bright);
+    text-align: right;
+    font-size: 13px;
+  }
+
+  /* PLATFORM TEST */
+  .platform-test {
+    display: grid;
+    gap: 2px;
+    background: var(--border);
+    margin: 24px 0;
+  }
+
+  .test-row {
+    display: grid;
+    grid-template-columns: 220px 80px 1fr;
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .test-question {
+    background: var(--slate-dark);
+    padding: 14px 18px;
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+  }
+
+  .test-verdict {
+    background: var(--charcoal);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .test-verdict.yes { color: var(--green); }
+  .test-verdict.no { color: var(--red); }
+  .test-verdict.maybe { color: var(--amber); }
+
+  .test-reasoning {
+    background: var(--charcoal);
+    padding: 14px 18px;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    display: flex;
+    align-items: center;
+  }
+
+  /* EVOLUTION STEPS */
+  .evolution-track {
+    position: relative;
+    padding-left: 40px;
+  }
+
+  .evolution-track::before {
+    content: '';
+    position: absolute;
+    left: 12px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--gold), var(--green));
+    opacity: 0.4;
+  }
+
+  .evolution-step {
+    position: relative;
+    margin-bottom: 32px;
+  }
+
+  .evolution-step::before {
+    content: '';
+    position: absolute;
+    left: -34px;
+    top: 6px;
+    width: 10px;
+    height: 10px;
+    background: var(--void);
+    border: 2px solid var(--gold);
+  }
+
+  .evolution-step.unlocked::before {
+    background: var(--gold);
+  }
+
+  .evolution-step.final::before {
+    border-color: var(--green);
+    background: var(--green);
+  }
+
+  .step-phase {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .evolution-step.final .step-phase { color: var(--green); }
+
+  .step-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+  }
+
+  .step-unlock {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+    line-height: 1.5;
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.03);
+    border-left: 2px solid var(--border-em);
+  }
+
+  /* VC MEMO TABLE */
+  .vc-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 2px;
+    margin: 24px 0;
+  }
+
+  .vc-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    text-transform: uppercase;
+    text-align: left;
+    padding: 10px 16px;
+    background: var(--slate-dark);
+  }
+
+  .vc-table td {
+    font-size: 13px;
+    color: var(--text);
+    padding: 12px 16px;
+    background: var(--charcoal);
+  }
+
+  .vc-table td:first-child {
+    font-weight: 700;
+    color: var(--text-bright);
+    font-size: 12px;
+  }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 2px;
+    background: var(--border);
+    margin: 24px 0;
+  }
+
+  .stat-box {
+    background: var(--charcoal);
+    padding: 24px 20px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  /* TROJAN HORSE DIAGRAM */
+  .trojan-diagram {
+    border: 1px solid var(--border-em);
+    padding: 32px;
+    margin: 24px 0;
+    background: var(--charcoal);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .trojan-diagram::before {
+    content: 'STRATEGIC ARCHITECTURE';
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 2px;
+    color: var(--border-em);
+    text-transform: uppercase;
+  }
+
+  .trojan-flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .trojan-node {
+    text-align: center;
+    padding: 16px 20px;
+    min-width: 140px;
+    flex-shrink: 0;
+  }
+
+  .trojan-node-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+  }
+
+  .trojan-node-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .trojan-node.anchor {
+    background: var(--gold-dim);
+    border: 1px solid rgba(201,168,76,0.3);
+  }
+
+  .trojan-node.anchor .trojan-node-title { color: var(--gold); }
+
+  .trojan-node.platform {
+    background: var(--green-dim);
+    border: 1px solid rgba(76,173,122,0.3);
+    min-width: 160px;
+  }
+
+  .trojan-node.platform .trojan-node-title { color: var(--green); }
+
+  .trojan-arrow {
+    font-size: 20px;
+    color: var(--border-em);
+    padding: 0 8px;
+    flex-shrink: 0;
+  }
+
+  /* FINAL VERDICT */
+  .final-verdict {
+    background: linear-gradient(135deg, rgba(76,173,122,0.08) 0%, rgba(0,0,0,0) 60%);
+    border: 1px solid rgba(76,173,122,0.25);
+    padding: 48px;
+    margin-top: 64px;
+    position: relative;
+  }
+
+  .final-verdict::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(to right, var(--green), transparent);
+  }
+
+  .verdict-heading {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 13px;
+    font-style: italic;
+    color: var(--green);
+    margin-bottom: 12px;
+  }
+
+  .verdict-statement {
+    font-family: 'Libre Baskerville', serif;
+    font-size: clamp(20px, 3vw, 28px);
+    font-weight: 700;
+    color: var(--text-bright);
+    line-height: 1.35;
+    letter-spacing: -0.3px;
+    margin-bottom: 24px;
+  }
+
+  /* MISTAKE LIST */
+  .mistake-list {
+    counter-reset: mistake;
+  }
+
+  .mistake-item {
+    counter-increment: mistake;
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .mistake-item:last-child { border-bottom: none; }
+
+  .mistake-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--red);
+    padding-top: 2px;
+  }
+
+  .mistake-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+  }
+
+  .mistake-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* FOOTER */
+  .doc-footer {
+    border-top: 1px solid var(--border);
+    padding-top: 28px;
+    margin-top: 64px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .doc-footer p {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  ul.body-list {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0;
+  }
+
+  ul.body-list li {
+    font-size: 13px;
+    color: var(--text);
+    padding: 5px 0;
+    padding-left: 20px;
+    position: relative;
+    line-height: 1.6;
+  }
+
+  ul.body-list li::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: var(--gold);
+    font-size: 11px;
+  }
+
+  h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin: 24px 0 10px;
+  }
+
+  @media (max-width: 640px) {
+    .page { padding: 0 16px 80px; }
+    .path-grid { grid-template-columns: 1fr; }
+    .test-row { grid-template-columns: 1fr; }
+    .test-question, .test-verdict { padding: 10px 14px; }
+    .final-verdict { padding: 28px 20px; }
+    .trojan-flow { flex-direction: column; }
+    .dna-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="memo-tag">Founder Strategy Memo — Product Decision</div>
+    <h1 class="cover-title">Envoys AI:<br><em>Evolve, Rebuild,</em><br>or Weaponize?</h1>
+    <p class="cover-sub">A brutally honest assessment of Envoys AI's strategic value, platform potential, and the correct path from here — written as a VC investment memo meets product teardown.</p>
+    <div class="meta-strip">
+      <div class="meta-item"><span class="meta-label">Decision Type</span><span class="meta-value">Build vs. Pivot vs. Hybrid</span></div>
+      <div class="meta-item"><span class="meta-label">Product Under Analysis</span><span class="meta-value">EnvoysOS / Envoys AI</span></div>
+      <div class="meta-item"><span class="meta-label">Market</span><span class="meta-value">Church-Tech → Church Media OS</span></div>
+      <div class="meta-item"><span class="meta-label">Verdict</span><span class="meta-value">Hybrid — Trojan Horse Strategy</span></div>
+    </div>
+  </div>
+
+  <!-- VERDICT BANNER -->
+  <div class="verdict-banner">
+    <div>
+      <div class="verdict-label">Final Verdict</div>
+      <div class="verdict-text">Hybrid: Weaponize EnvoysAI as a Trojan Horse</div>
+    </div>
+    <div class="verdict-pill">HYBRID ✓</div>
+  </div>
+
+  <!-- SECTION 1: PRODUCT DNA -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">01 —</span>
+      <div>
+        <h2 class="section-title">Product DNA Analysis</h2>
+        <p class="section-desc">What Envoys AI actually is — not what you want it to be. The codebase doesn't lie.</p>
+      </div>
+    </div>
+
+    <p class="lead">After reading your entire codebase: server/index.js, useStore.js, every page component, the hardware docs, the update log — here is the unvarnished truth.</p>
+
+    <p>Envoys AI is a <strong>live production control system for church services</strong>. It manages real-time timers, scene switching, media assets, multi-display output routing, and OBS integration. It works via WebSockets, has role-based auth, preview/staging mode, and collaborative operator sync. It is genuinely well-built. The architecture is solid. The UX thinking is real.</p>
+
+    <p>But none of that changes what category it occupies.</p>
+
+    <div class="dna-grid">
+      <div class="dna-row">
+        <div class="dna-label">Product Category</div>
+        <div class="dna-value">
+          <span>Production Control Software — the ProPresenter / MediaShout category</span>
+          <span class="badge badge-amber">Operational Layer</span>
+        </div>
+      </div>
+      <div class="dna-row">
+        <div class="dna-label">Feature / Tool / Platform?</div>
+        <div class="dna-value">
+          <span>Tool. A very good tool. But a tool.</span>
+          <span class="badge badge-red">Not Platform</span>
+        </div>
+      </div>
+      <div class="dna-row">
+        <div class="dna-label">Ecosystem Layer</div>
+        <div class="dna-value">
+          <span>Operational layer — it runs Sunday service, not the church's digital strategy</span>
+          <span class="badge badge-amber">Ops Layer</span>
+        </div>
+      </div>
+      <div class="dna-row">
+        <div class="dna-label">System of Record?</div>
+        <div class="dna-value">
+          <span>No. It forgets everything. SQLite state, no long-term content ownership</span>
+          <span class="badge badge-red">Ephemeral</span>
+        </div>
+      </div>
+      <div class="dna-row">
+        <div class="dna-label">Network Effects?</div>
+        <div class="dna-value">
+          <span>None. One church using it doesn't make it better for another church</span>
+          <span class="badge badge-red">Zero</span>
+        </div>
+      </div>
+      <div class="dna-row">
+        <div class="dna-label">Data Moat?</div>
+        <div class="dna-value">
+          <span>None currently. Timer data and scene states are not competitively valuable</span>
+          <span class="badge badge-red">None</span>
+        </div>
+      </div>
+      <div class="dna-row">
+        <div class="dna-label">Switching Cost</div>
+        <div class="dna-value">
+          <span>Low-medium. A media team can learn ProPresenter in a week if they had to</span>
+          <span class="badge badge-amber">Low–Medium</span>
+        </div>
+      </div>
+      <div class="dna-row">
+        <div class="dna-label">Primary Competitor</div>
+        <div class="dna-value">
+          <span>ProPresenter — $600/year, dominant, global, deeply entrenched</span>
+          <span class="badge badge-red">Entrenched Incumbent</span>
+        </div>
+      </div>
+      <div class="dna-row">
+        <div class="dna-label">Real Asset Created</div>
+        <div class="dna-value">
+          <span>Deep trust relationship with church media teams — this is gold</span>
+          <span class="badge badge-green">Strategic Entry</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout danger">
+      <p>The brutal truth: if you charge $49/month for Envoys AI, you're competing against ProPresenter on features, Resolume on visual quality, and free solutions like OBS itself. That is a war you cannot win by being slightly better. The category is wrong.</p>
+      <cite>Product Category Diagnosis</cite>
+    </div>
+
+    <p>But here's what makes this interesting — and why the verdict is NOT abandon: <strong>EnvoysAI has something ProPresenter will never have.</strong> ProPresenter is an American product, desktop-installed, USD-priced, built for Western megachurches with dedicated AV teams and $50K equipment budgets. You are web-native, real-time, collaborative, built for the exact church context you're in. That gap is real. But it's not the opportunity — it's the <em>opening.</em></p>
+  </div>
+
+  <!-- SECTION 2: PATH COMPARISON -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">02 —</span>
+      <div>
+        <h2 class="section-title">Upside Potential Comparison</h2>
+        <p class="section-desc">Three paths, honestly measured. Revenue ceilings don't lie.</p>
+      </div>
+    </div>
+
+    <div class="path-grid">
+      <div class="path-card path-a">
+        <div class="path-header">PATH A — Pure Evolution</div>
+        <div class="path-title">Keep building Envoys AI as a production tool</div>
+        <ul class="metric-list">
+          <li><span class="metric-key">Revenue ceiling</span><span class="metric-val">~$2–4M ARR</span></li>
+          <li><span class="metric-key">Churches needed</span><span class="metric-val">~3,000+ at $99/mo</span></li>
+          <li><span class="metric-key">Expansion</span><span class="metric-val">Limited (ops category)</span></li>
+          <li><span class="metric-key">Infrastructure play?</span><span class="metric-val">No</span></li>
+          <li><span class="metric-key">VC fundable?</span><span class="metric-val">Unlikely</span></li>
+          <li><span class="metric-key">Competitive risk</span><span class="metric-val">High — ProPresenter</span></li>
+        </ul>
+        <div class="callout danger" style="margin-top:16px;">
+          <p>Good SaaS. Not a category. Not infrastructure. Not fundable at scale.</p>
+          <cite>Ceiling Assessment</cite>
+        </div>
+      </div>
+
+      <div class="path-card path-b" style="border-left: 2px solid var(--red);">
+        <div class="path-header">PATH B — Full Rebuild</div>
+        <div class="path-title">Abandon Envoys AI, start PulpitOS from scratch</div>
+        <ul class="metric-list">
+          <li><span class="metric-key">Revenue ceiling</span><span class="metric-val">$50M+ ARR</span></li>
+          <li><span class="metric-key">Churches needed</span><span class="metric-val">~5,000 at $199/mo</span></li>
+          <li><span class="metric-key">Expansion</span><span class="metric-val">Massive — content layer</span></li>
+          <li><span class="metric-key">Infrastructure play?</span><span class="metric-val">Yes, definitively</span></li>
+          <li><span class="metric-key">VC fundable?</span><span class="metric-val">Yes — at traction</span></li>
+          <li><span class="metric-key">Time to first revenue</span><span class="metric-val">6–9 months (cold start)</span></li>
+        </ul>
+        <div class="callout danger" style="margin-top:16px;">
+          <p>The category is right. But you lose your installed base, your proof of concept, and your fastest distribution channel into church media teams.</p>
+          <cite>Cold Start Risk</cite>
+        </div>
+      </div>
+    </div>
+
+    <div class="path-card path-hybrid" style="border-top: 2px solid var(--green); margin-top: 2px;">
+      <div class="path-header">PATH C — Hybrid (Trojan Horse)</div>
+      <div class="path-title">Keep Envoys AI as the entry wedge. Build PulpitOS as the real product behind it.</div>
+      <ul class="metric-list">
+        <li><span class="metric-key">Revenue ceiling</span><span class="metric-val">$50M+ ARR (PulpitOS) + $2M (EnvoysAI)</span></li>
+        <li><span class="metric-key">Time to first revenue</span><span class="metric-val">3–4 months (Envoys AI paying customers fund PulpitOS build)</span></li>
+        <li><span class="metric-key">Distribution advantage</span><span class="metric-val">Envoys AI users are the first 100 churches on PulpitOS</span></li>
+        <li><span class="metric-key">Trust runway</span><span class="metric-val">Already operating every Sunday — maximum trust</span></li>
+        <li><span class="metric-key">Risk profile</span><span class="metric-val">Low — revenue from Day 1, optionality preserved</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SECTION 3: PLATFORM TEST -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">03 —</span>
+      <div>
+        <h2 class="section-title">Platform Evolution Test</h2>
+        <p class="section-desc">Can Envoys AI realistically become a system of record, engagement, or monetization? Honest answers only.</p>
+      </div>
+    </div>
+
+    <div class="platform-test">
+      <div class="test-row" style="background: var(--border);">
+        <div class="test-question" style="background: var(--slate-dark); color: var(--text-dim); font-size: 10px; font-family: 'DM Mono', monospace; letter-spacing: 1.5px; text-transform: uppercase;">Platform Question</div>
+        <div class="test-verdict" style="background: var(--slate-dark); color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1px;">Verdict</div>
+        <div class="test-reasoning" style="background: var(--slate-dark); color: var(--text-dim); font-size: 10px; font-family: 'DM Mono', monospace; letter-spacing: 1px; text-transform: uppercase;">Why</div>
+      </div>
+      <div class="test-row">
+        <div class="test-question">System of Record for church operations?</div>
+        <div class="test-verdict no">No</div>
+        <div class="test-reasoning">Session state only. No permanent ownership of anything the church cares about long-term. Churches don't "need" their timer history.</div>
+      </div>
+      <div class="test-row">
+        <div class="test-question">System of Record for church content?</div>
+        <div class="test-verdict maybe">Maybe</div>
+        <div class="test-reasoning">If you add sermon recording, slide/media asset archive, and tag history — yes. This is the pivot point. The media library is the seed.</div>
+      </div>
+      <div class="test-row">
+        <div class="test-question">System of Engagement (ongoing relationship)?</div>
+        <div class="test-verdict yes">Yes</div>
+        <div class="test-reasoning">Every Sunday. Without exception. This is the strongest possible engagement loop. No SaaS on earth has a "guaranteed weekly usage" hook like this.</div>
+      </div>
+      <div class="test-row">
+        <div class="test-question">System of Monetization for the church?</div>
+        <div class="test-verdict no">No</div>
+        <div class="test-reasoning">Currently zero. But: add a "give during stream" button to the audience view and you instantly touch the financial layer.</div>
+      </div>
+      <div class="test-row">
+        <div class="test-question">Network effects possible?</div>
+        <div class="test-verdict maybe">Maybe</div>
+        <div class="test-reasoning">Only if you add a shared media/template marketplace across churches. Then each church's contribution improves the product for all. This is buildable.</div>
+      </div>
+      <div class="test-row">
+        <div class="test-question">Can it generate data with moat value?</div>
+        <div class="test-verdict maybe">Maybe</div>
+        <div class="test-reasoning">If you add analytics: which sermon types run longest, audience attention signals, content performance. Benchmarking data across 1,000 churches = proprietary asset.</div>
+      </div>
+      <div class="test-row">
+        <div class="test-question">Can it become distribution infrastructure?</div>
+        <div class="test-verdict yes">Yes</div>
+        <div class="test-reasoning">Add sermon recording → auto-push to podcast RSS, YouTube, WhatsApp. Now every service run through Envoys AI automatically distributes content. This is PulpitOS's core loop.</div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <p>The platform test reveals one critical insight: Envoys AI cannot become infrastructure on its own — but it contains the seeds of something that can. The media library is the Trojan horse within the Trojan horse. The path from "scene control" to "content archive" to "distribution platform" is shorter than you think.</p>
+      <cite>Platform Pivot Insight</cite>
+    </div>
+  </div>
+
+  <!-- SECTION 4: EVOLUTION PATH -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">04 —</span>
+      <div>
+        <h2 class="section-title">Step-by-Step Product Evolution</h2>
+        <p class="section-desc">If you choose to evolve Envoys AI into something bigger — here is the exact sequence.</p>
+      </div>
+    </div>
+
+    <p>The evolution path is not "add features to Envoys AI." It is using Envoys AI as the ground truth operational layer that earns the right to expand into the content and distribution layer. Each step unlocks the next.</p>
+
+    <div class="evolution-track">
+
+      <div class="evolution-step unlocked">
+        <div class="step-phase">Phase 0 — Current State (Now)</div>
+        <div class="step-title">Envoys AI: Production Control Tool</div>
+        <p style="font-size:13px; color: var(--text-dim);">Timer system, scene control, media library, OBS integration, multi-display output. Already built. Already running in a real church. This is your beachhead. Every church that uses this trusts you with their most important hour of the week.</p>
+        <div class="step-unlock">Unlock earned: access to the church media team — the exact person who controls content creation, distribution tools, and technology purchasing decisions.</div>
+      </div>
+
+      <div class="evolution-step">
+        <div class="step-phase">Phase 1 — 0–4 Months: Monetize + Expand Media Layer</div>
+        <div class="step-title">Add Sermon Recording + Archive</div>
+        <p style="font-size:13px; color: var(--text-dim);">Record the service directly from Envoys AI. Auto-tag with speaker, scripture, series, date. Build a permanent sermon archive. Now you're a system of record for the most valuable content a church creates. The media library evolves from "file upload" to "content history."</p>
+        <div class="step-unlock">Feature unlock: you now own the church's content history. Switching cost just jumped 10x. This is the first lock-in event.</div>
+      </div>
+
+      <div class="evolution-step">
+        <div class="step-phase">Phase 2 — 4–8 Months: Distribution Layer</div>
+        <div class="step-title">Auto-publish Pipeline (PulpitOS Core)</div>
+        <p style="font-size:13px; color: var(--text-dim);">One click from the Envoys AI dashboard: sermon goes to podcast RSS (Apple + Spotify), YouTube, church website, WhatsApp broadcast. Add the Anthropic API — sermon auto-transcribed, notes generated, 5 social captions created, a blog post written. This is the content OS moment. Envoys AI becomes the first tool in the chain.</p>
+        <div class="step-unlock">Revenue unlock: this is where you charge real money ($99–$299/month). Churches will pay for distribution that used to require a 3-person media team.</div>
+      </div>
+
+      <div class="evolution-step">
+        <div class="step-phase">Phase 3 — 8–14 Months: Financial Layer</div>
+        <div class="step-title">Integrated Giving (Paystack + Stripe)</div>
+        <p style="font-size:13px; color: var(--text-dim);">Add a giving button to the audience view. Add giving links to every distributed piece of content. Add diaspora giving with Paystack (Nigeria → London → Houston). Now Envoys AI touches the financial layer — 1.5% transaction fee on every piece of giving that flows through your distribution. This is the monetization unlock.</p>
+        <div class="step-unlock">Revenue model shifts: from pure SaaS to SaaS + transaction. This is when the unit economics become extraordinary.</div>
+      </div>
+
+      <div class="evolution-step">
+        <div class="step-phase">Phase 4 — 14–24 Months: Data + Intelligence Layer</div>
+        <div class="step-title">Analytics + Benchmarking OS</div>
+        <p style="font-size:13px; color: var(--text-dim);">Cross-church analytics: which message topics drive the most listener engagement? Which sermon series causes the highest member retention? Which content gets the most diaspora giving? Benchmarking across 500+ churches creates a data asset that no single church can generate alone. Sold as a premium analytics tier at $299–$999/month.</p>
+        <div class="step-unlock">Defensibility unlock: proprietary benchmarking data becomes the moat. Competitors cannot replicate it without the same installed base. This is when EnvoysAI evolves into infrastructure.</div>
+      </div>
+
+      <div class="evolution-step final">
+        <div class="step-phase">Phase 5 — 24+ Months: Category Definition</div>
+        <div class="step-title">The Church Content OS — PulpitOS</div>
+        <p style="font-size:13px; color: var(--text-dim);">By this point, you are not "presentation software." You are the operating system through which the church produces, distributes, monetizes, and analyzes its content. You started by running their Sunday service. Now you run their entire digital presence. Denomination-level contracts. White-label deals with RCCG, Winners, AOG networks.</p>
+        <div class="step-unlock">Category created: you are now infrastructure. Switching cost = existential. Revenue ceiling = uncapped.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SECTION 5: REBUILD STRATEGY -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">05 —</span>
+      <div>
+        <h2 class="section-title">If You Were to Rebuild</h2>
+        <p class="section-desc">Purely for strategic completeness — what a cold-start play would look like.</p>
+      </div>
+    </div>
+
+    <p>If you abandoned Envoys AI entirely and rebuilt from scratch aimed squarely at the content/media layer, here is what you would build:</p>
+
+    <p><strong>Product: PulpitOS</strong> — a church content operating system. Upload → AI transcription → auto-publish to all platforms → giving embedded → analytics. $149/month SaaS + 1.5% giving transaction fee. Built for the Lagos megachurch media team first, then expanded to diaspora churches in UK and US.</p>
+
+    <p>The cold-start problem is the killer. You would spend 3–6 months building before first revenue, with no installed base and no existing trust relationship. The church media team relationship that Envoys AI earns every Sunday would have to be rebuilt from zero. This costs time, and time costs money.</p>
+
+    <div class="callout danger">
+      <p>Rebuild is the better category. But it is the worse strategy for someone already sitting inside the right rooms. You have something most founders spend 12 months trying to get: a weekly, mission-critical presence in the exact workflow you want to own. Do not abandon it.</p>
+      <cite>Rebuild Assessment</cite>
+    </div>
+
+    <p>Your experience building Envoys AI gives you a concrete advantage even in a rebuild scenario: you understand the church media team's actual workflow in production conditions, not from interviews. You know what breaks under pressure. You know the language. That knowledge is genuinely hard to acquire. But in a pure rebuild, you waste 6 months you don't need to waste.</p>
+  </div>
+
+  <!-- SECTION 6: HYBRID STRATEGY -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">06 —</span>
+      <div>
+        <h2 class="section-title">The Hybrid Strategy — In Full Detail</h2>
+        <p class="section-desc">The correct answer. Not the comfortable one — the strategically superior one.</p>
+      </div>
+    </div>
+
+    <p class="lead">Envoys AI is not your product. It is your distribution channel into the product.</p>
+
+    <p>Here is the strategic architecture. Envoys AI is the Trojan horse that gets you through the gates of the church. The church media team trusts it. It runs every Sunday. It is reliable. They have told other media teams about it. This is your unfair distribution advantage — and distribution is the most expensive thing to buy in any market.</p>
+
+    <div class="trojan-diagram">
+      <div class="trojan-flow">
+        <div class="trojan-node anchor">
+          <div class="trojan-node-title">Envoys AI</div>
+          <div class="trojan-node-sub">Entry Wedge<br>Free / $29/mo</div>
+        </div>
+        <div class="trojan-arrow">→</div>
+        <div class="trojan-node" style="background: rgba(201,125,76,0.1); border: 1px solid rgba(201,125,76,0.3);">
+          <div class="trojan-node-title" style="color: var(--amber);">Trust & Access</div>
+          <div class="trojan-node-sub">Weekly presence<br>media team relationship</div>
+        </div>
+        <div class="trojan-arrow">→</div>
+        <div class="trojan-node" style="background: rgba(76,126,201,0.1); border: 1px solid rgba(76,126,201,0.3);">
+          <div class="trojan-node-title" style="color: var(--blue);">Content Archive</div>
+          <div class="trojan-node-sub">System of record<br>sermon history</div>
+        </div>
+        <div class="trojan-arrow">→</div>
+        <div class="trojan-node platform">
+          <div class="trojan-node-title">PulpitOS</div>
+          <div class="trojan-node-sub">Content OS<br>$149–$299/mo + txn</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>What "Trojan Horse" Means in Practice</h3>
+
+    <p>Envoys AI is offered free or at a very low price point ($0–$29/month). The goal is not to generate significant revenue from Envoys AI — the goal is to get it running in as many churches as possible. Every church running Envoys AI is a warm, pre-qualified lead for PulpitOS. They already trust you. They've seen your product quality. The "upgrade" conversation is a natural extension, not a cold pitch.</p>
+
+    <p>The conversion ask is simple: <em>"You're already running your service through EnvoysAI. Now let us handle where that content goes afterwards."</em></p>
+
+    <h3>How Envoys AI Evolves Under the Hybrid Strategy</h3>
+
+    <ul class="body-list">
+      <li>Add sermon recording to Envoys AI — now it's also a content capture layer</li>
+      <li>Add a "Distribute" button that pushes to PulpitOS — now it's a feeder product</li>
+      <li>Add audience giving widget to the audience display — now it touches the financial layer</li>
+      <li>The Envoys AI media library becomes the content archive that PulpitOS distributes</li>
+      <li>Envoys AI analytics (timer overruns, service length trends) seeds the PulpitOS intelligence layer</li>
+    </ul>
+
+    <h3>The Revenue Architecture</h3>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-num">$0–29</div>
+        <div class="stat-label">EnvoysAI/mo<br>Entry Price</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">$149</div>
+        <div class="stat-label">PulpitOS/mo<br>Core Product</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">1.5%</div>
+        <div class="stat-label">Giving Fee<br>Transaction Layer</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">$50K+</div>
+        <div class="stat-label">Denomination<br>Annual Deals</div>
+      </div>
+    </div>
+
+    <div class="callout success">
+      <p>The hybrid strategy means you never have a cold start. Day 1 of PulpitOS, you already have warm prospects — every church running Envoys AI. This is the most capital-efficient GTM strategy available to you.</p>
+      <cite>GTM Advantage</cite>
+    </div>
+
+    <h3>What NOT to Do (Hybrid Failure Modes)</h3>
+
+    <div class="mistake-list">
+      <div class="mistake-item">
+        <span class="mistake-num">01</span>
+        <div>
+          <div class="mistake-title">Don't build Envoys AI into a $99/mo product before PulpitOS exists</div>
+          <div class="mistake-desc">If you charge $99/mo for a production tool, you become locked into competing on features with ProPresenter. Keep Envoys AI cheap and accessible. Revenue comes from PulpitOS, not from Envoys AI.</div>
+        </div>
+      </div>
+      <div class="mistake-item">
+        <span class="mistake-num">02</span>
+        <div>
+          <div class="mistake-title">Don't build PulpitOS until you have 10+ Envoys AI churches</div>
+          <div class="mistake-desc">The distribution advantage only works if you have enough churches running Envoys AI. Get Envoys AI into 15–20 Lagos churches (especially 3–5 recognizable names) before you build PulpitOS in earnest.</div>
+        </div>
+      </div>
+      <div class="mistake-item">
+        <span class="mistake-num">03</span>
+        <div>
+          <div class="mistake-title">Don't try to build both products simultaneously at feature parity</div>
+          <div class="mistake-desc">Envoys AI should be maintained and stable but not actively feature-developed once PulpitOS builds starts. You cannot build two products simultaneously as a solo founder. PulpitOS is the priority once Envoys AI has traction.</div>
+        </div>
+      </div>
+      <div class="mistake-item">
+        <span class="mistake-num">04</span>
+        <div>
+          <div class="mistake-title">Don't keep both products at arm's length — wire them together</div>
+          <div class="mistake-desc">The Trojan horse only works if there's a clear product bridge: the "Distribute" button in Envoys AI that pushes to PulpitOS. If they feel like two separate products from two separate companies, you lose the conversion advantage.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 7: VC MEMO VERDICT -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">07 —</span>
+      <div>
+        <h2 class="section-title">Decision Framework — VC Memo Format</h2>
+        <p class="section-desc">The final verdict, justified as an investment memo.</p>
+      </div>
+    </div>
+
+    <table class="vc-table">
+      <thead>
+        <tr>
+          <th>Factor</th>
+          <th>Path A: Evolve</th>
+          <th>Path B: Rebuild</th>
+          <th>Path C: Hybrid</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Market Size</td>
+          <td>$50–200M (tools category)</td>
+          <td>$1B+ (infrastructure category)</td>
+          <td>$1B+ (same, with earlier revenue)</td>
+        </tr>
+        <tr>
+          <td>Revenue Speed</td>
+          <td>3–6 months</td>
+          <td>6–12 months</td>
+          <td>3–6 months</td>
+        </tr>
+        <tr>
+          <td>Strategic Positioning</td>
+          <td>Operational tool competitor</td>
+          <td>Category creator, but cold start</td>
+          <td>Category creator with warm distribution</td>
+        </tr>
+        <tr>
+          <td>Long-term Defensibility</td>
+          <td>Low — ProPresenter wins on features</td>
+          <td>High — data moat, network effects possible</td>
+          <td>High — same moat + established trust layer</td>
+        </tr>
+        <tr>
+          <td>Network Effects</td>
+          <td>None</td>
+          <td>Strong (content distribution network)</td>
+          <td>Strong (same) + operational trust</td>
+        </tr>
+        <tr>
+          <td>VC Fundable?</td>
+          <td>No</td>
+          <td>Yes (at traction)</td>
+          <td>Yes (at traction, with revenue proof)</td>
+        </tr>
+        <tr>
+          <td>Founder Advantage</td>
+          <td>Low</td>
+          <td>Medium (knowledge only)</td>
+          <td>High (installed base + knowledge + Lagos context)</td>
+        </tr>
+        <tr>
+          <td>Risk Profile</td>
+          <td>Low risk, low reward</td>
+          <td>High risk, high reward</td>
+          <td>Low risk, high reward</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FINAL VERDICT -->
+  <div class="final-verdict">
+    <div class="verdict-heading">Investment Memo — Final Decision</div>
+    <div class="verdict-statement">The verdict is HYBRID. Not because it's comfortable — because it is the only strategy that is both technically sound and commercially superior.</div>
+
+    <p style="font-size:15px; color: var(--text); line-height:1.85; margin-bottom:20px;">You have something most founders spend 12 months and $200K trying to acquire: a weekly, mission-critical presence in the workflow of your target customer. The church media team that runs EnvoysAI every Sunday trusts you. They have invited you into their most important hour. That is not a small thing — that is distribution.</p>
+
+    <p style="font-size:15px; color: var(--text); line-height:1.85; margin-bottom:20px;">The right move is to honor that trust, expand it carefully into the content archive layer (sermon recording + media history), and use that expanded trust to introduce PulpitOS — the real product — as a natural evolution of what you've already given them. This is not a pivot. This is a reveal. EnvoysAI was always the opening act. PulpitOS is the headline.</p>
+
+    <p style="font-size:15px; color: var(--text); line-height:1.85; margin-bottom:32px;">The 24-month path: get 20+ Lagos churches on EnvoysAI (free/cheap) → add sermon recording and archive → introduce PulpitOS distribution to those same churches → charge $149/month for PulpitOS → add giving integration for transaction revenue → approach denomination networks with enterprise deals → raise seed round with revenue data. The addressable market is a billion-dollar category that no one has properly built for. You are geographically positioned, technically capable, and already inside the room. Execute the Trojan horse.</p>
+
+    <div style="display: flex; gap: 16px; flex-wrap: wrap; padding-top: 20px; border-top: 1px solid rgba(76,173,122,0.2);">
+      <div>
+        <div style="font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--green); text-transform: uppercase; margin-bottom: 4px;">Verdict</div>
+        <div style="font-size: 14px; font-weight: 800; color: var(--text-bright);">HYBRID — Trojan Horse Strategy</div>
+      </div>
+      <div style="margin-left: auto;">
+        <div style="font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--green); text-transform: uppercase; margin-bottom: 4px;">Confidence</div>
+        <div style="font-size: 14px; font-weight: 800; color: var(--text-bright);">High</div>
+      </div>
+      <div>
+        <div style="font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--green); text-transform: uppercase; margin-bottom: 4px;">Next Milestone</div>
+        <div style="font-size: 14px; font-weight: 800; color: var(--text-bright);">20 Lagos churches on EnvoysAI</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <p>Envoys AI Strategic Memo — Product Decision Framework</p>
+    <p>EnvoysAI → PulpitOS — March 2026</p>
+    <p>Confidential — Founder Use Only</p>
+  </div>
+
+</div>
+</body>
+</html>

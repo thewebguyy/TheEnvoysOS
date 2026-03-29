@@ -145,3 +145,13 @@ model LyricSlide {
 
   @@index([sectionId])
 }
+
+model SystemState {
+  id    Int    @id @default(1)
+  data  String // Store as string for easy migration from sqlite, but could be Json later
+}
+
+model SystemMeta {
+  key   String @id
+  value String
+}
