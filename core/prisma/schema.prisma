@@ -55,6 +55,8 @@ model Media {
   createdAt    DateTime @default(now())
 
   segments     Segment[]
+  sermons      Sermon[]
+  clips        Clip[]
 
   @@index([tenantId])
 }
@@ -63,9 +65,11 @@ model Service {
   id          String    @id @default(uuid())
   name        String
   date        DateTime
+  status      String    @default("DRAFT") // DRAFT, LIVE, COMPLETED
   tenantId    String
   tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   segments    Segment[]
+  sermons     Sermon[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -90,12 +94,66 @@ model Segment {
   order      Int
   duration   Int?        // Expected duration in seconds
   notes      String?
+  speaking   String?     // Speaker name for sermon segments
   mediaId    String?
   media      Media?      @relation(fields: [mediaId], references: [id], onDelete: SetNull)
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 
   @@index([serviceId])
+}
+
+model Sermon {
+  id           String          @id @default(uuid())
+  title        String
+  speaker      String
+  date         DateTime        @default(now())
+  serviceId    String?
+  service      Service?        @relation(fields: [serviceId], references: [id])
+  thumbnailUrl String?
+  mediaId      String?
+  media        Media?          @relation(fields: [mediaId], references: [id])
+  tenantId     String
+  tenant       Tenant          @relation(fields: [tenantId], references: [id])
+  segments     SermonSegment[]
+  clips        Clip[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([tenantId])
+}
+
+model SermonSegment {
+  id        String   @id @default(uuid())
+  sermonId  String
+  sermon    Sermon   @relation(fields: [sermonId], references: [id], onDelete: Cascade)
+  title     String
+  startTime Int?     // Start time in seconds
+  endTime   Int?     // End time in seconds
+  type      String?  // e.g. "Clips", "Moment", "Key Point"
+  clips     Clip[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sermonId])
+}
+
+model Clip {
+  id          String         @id @default(uuid())
+  sermonId    String
+  sermon      Sermon         @relation(fields: [sermonId], references: [id], onDelete: Cascade)
+  segmentId   String
+  segment     SermonSegment  @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  title       String
+  caption     String?
+  platform    String?        // "YOUTUBE", "INSTAGRAM", "FACEBOOK", "TIKTOK"
+  status      String         @default("DRAFT") // "DRAFT", "READY", "EXPORTED"
+  thumbnailId String?
+  thumbnail   Media?         @relation(fields: [thumbnailId], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([segmentId])
 }
 
 model Song {

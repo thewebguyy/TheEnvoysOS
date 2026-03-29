@@ -18,13 +18,15 @@ const Dashboard = () => {
     const {
         timers, currentScene, media, storageStats, stagedScene, previewMode,
         updateTimer, updateScene, fetchMedia, deleteMedia, resetAll,
-        isConnected, isSyncing, setPreviewMode, goLive, undo, redo, actionQueue
+        isConnected, isSyncing, setPreviewMode, goLive, undo, redo, actionQueue,
+        currentService, startService, endService, sermonMetadata, setSermonMetadata, addMarker
     } = useStore();
 
     const [activeTab, setActiveTab] = useState('dashboard');
     const [uploading, setUploading] = useState(false);
     const [isVoiceActive, setIsVoiceActive] = useState(false);
     const [role, setRole] = useState('admin'); // 'admin' or 'volunteer'
+    const [showEndModal, setShowEndModal] = useState(false);
 
     // Display Management
     const { displayCount, isSupported, detectDisplays, screens } = useDisplayCount();
@@ -199,6 +201,95 @@ const Dashboard = () => {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-4 lg:gap-6 w-full xl:w-auto">
+                        <div className="flex xl:flex items-center gap-4 bg-black/20 p-2 rounded-2xl border border-white/5">
+                            {!currentService ? (
+                                <button
+                                    onClick={() => startService()}
+                                    className="px-6 py-2.5 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-all"
+                                >
+                                    Start Live Service
+                                </button>
+                            ) : (
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl">
+                                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                                        <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">LIVE SERVICE</span>
+                                    </div>
+                                    <button
+                                        onClick={() => addMarker()}
+                                        className="px-4 py-2.5 bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all"
+                                    >
+                                        Mark Moment
+                                    </button>
+                                    <button
+                                        onClick={() => setShowEndModal(true)}
+                                        className="px-6 py-2.5 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-200 transition-all"
+                                    >
+                                        End & Handoff
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Handoff Modal */}
+                        <AnimatePresence>
+                            {showEndModal && (
+                                <motion.div
+                                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                    className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl"
+                                >
+                                    <motion.div
+                                        initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                                        className="bg-[#121212] border border-white/10 p-10 rounded-[3rem] max-w-lg w-full shadow-[0_30px_100px_rgba(0,0,0,0.8)]"
+                                    >
+                                        <h2 className="text-3xl font-black uppercase tracking-tight mb-2 italic">Capture Sermon</h2>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-10">Prepare metadata for PulpitOS Library</p>
+                                        
+                                        <div className="space-y-6">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">Sermon Title</label>
+                                                <input
+                                                    type="text"
+                                                    value={sermonMetadata.title}
+                                                    onChange={(e) => setSermonMetadata({ title: e.target.value })}
+                                                    placeholder="e.g. The Power of Grace"
+                                                    className="w-full bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold focus:border-primary/50 focus:outline-none transition-all"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">Speaker / Preacher</label>
+                                                <input
+                                                    type="text"
+                                                    value={sermonMetadata.speaker}
+                                                    onChange={(e) => setSermonMetadata({ speaker: e.target.value })}
+                                                    placeholder="e.g. Pastor John Doe"
+                                                    className="w-full bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold focus:border-primary/50 focus:outline-none transition-all"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col gap-4 mt-12">
+                                            <button
+                                                onClick={() => {
+                                                    endService();
+                                                    setShowEndModal(false);
+                                                }}
+                                                className="w-full py-5 bg-primary text-white rounded-3xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all"
+                                            >
+                                                Finish & Sync to PulpitOS
+                                            </button>
+                                            <button
+                                                onClick={() => setShowEndModal(false)}
+                                                className="w-full py-5 bg-white/5 text-slate-400 rounded-3xl text-[10px] font-black uppercase tracking-widest hover:text-white transition-all"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
                         {/* Miniature Output Previews */}
                         <div className="hidden xl:flex items-center gap-4 bg-black/20 p-2 rounded-2xl border border-white/5">
                             {['audience', 'stage', 'stream'].map(id => (

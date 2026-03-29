@@ -61,6 +61,63 @@ const useStore = create(persist((set, get) => ({
     token: null,
     role: 'volunteer',
     schemaVersion: 2,
+    currentService: null, // { id, name, status }
+    sermonMetadata: { title: '', speaker: '' },
+    markers: [], // [{ title, time }]
+
+    // Service Lifecycle Actions
+    addMarker: (title) => {
+        const { timers } = get();
+        const time = timers.elapsed.seconds; // Use total elapsed time of service
+        set((state) => ({ 
+            markers: [...state.markers, { title: title || `Moment ${state.markers.length + 1}`, time }] 
+        }));
+        toast.success(`Marker added: ${time}s`);
+    },
+
+    startService: async (name) => {
+        const { token } = get();
+        try {
+            const res = await axios.post(`${BASE_URL}/api/services`, { name }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            set({ currentService: res.data });
+            toast.success('Live Service Session Started');
+        } catch {
+            toast.error('Failed to start service session');
+        }
+    },
+
+    endService: async () => {
+        const { currentService, token, sermonMetadata } = get();
+        if (!currentService) return;
+        try {
+            // Update service status to COMPLETED
+            await axios.patch(`${BASE_URL}/api/services/${currentService.id}`, 
+                { status: 'COMPLETED' },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            // Trigger Handoff if sermon metadata is available
+            if (sermonMetadata.title && sermonMetadata.speaker) {
+                await axios.post(`${BASE_URL}/api/sermons`, {
+                    title: sermonMetadata.title,
+                    speaker: sermonMetadata.speaker,
+                    serviceId: currentService.id
+                }, { headers: { Authorization: `Bearer ${token}` } });
+                toast.success('Sermon handed off to PulpitOS');
+            }
+
+            set({ currentService: null, sermonMetadata: { title: '', speaker: '' } });
+            toast.success('Service session completed');
+        } catch {
+            toast.error('Error closing service session');
+        }
+    },
+
+    setSermonMetadata: (metadata) => {
+        set((state) => ({ sermonMetadata: { ...state.sermonMetadata, ...metadata } }));
+    },
 
     // Auth Actions
     login: async (password) => {

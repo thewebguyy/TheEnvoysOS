@@ -9,6 +9,9 @@ module.exports = {
   Service: prisma.service,
   Segment: prisma.segment,
   Song: prisma.song,
+  Sermon: prisma.sermon,
+  SermonSegment: prisma.sermonSegment,
+  Clip: prisma.clip,
   SystemState: prisma.systemState,
   SystemMeta: prisma.systemMeta,
 };
