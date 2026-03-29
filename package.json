@@ -5,12 +5,12 @@
   "description": "Modular, multi-product architecture for Envoys AI and PulpitOS",
   "workspaces": [
     "apps/*",
-    "core/*",
-    "packages/*"
+    "packages/*",
+    "core"
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=@envoys/app\" \"npm run dev --workspace=@envoys/server\"",
-    "build": "npm run build --workspaces",
+    "build": "npm run build --workspace=@envoys/app",
     "clean": "rm -rf node_modules apps/*/node_modules core/*/node_modules packages/*/node_modules",
     "envoys:dev": "npm run dev --workspace=@envoys/app",
     "pulpitos:dev": "npm run dev --workspace=@envoys/pulpitos",
