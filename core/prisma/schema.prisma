@@ -147,14 +147,34 @@ model Clip {
   title       String
   caption     String?
   platform    String?        // "YOUTUBE", "INSTAGRAM", "FACEBOOK", "TIKTOK"
-  status      String         @default("DRAFT") // "DRAFT", "READY", "EXPORTED"
+  status      String         @default("DRAFT") // "DRAFT", "READY", "PROCESSING", "EXPORTED", "FAILED"
   thumbnailId String?
   thumbnail   Media?         @relation(fields: [thumbnailId], references: [id])
+  
+  exportUrl   String?
+  error       String?
+  exportedAt  DateTime?
+  
+  syncJobs    SyncJob[]
+
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
   @@index([segmentId])
 }
+
+model SyncJob {
+  id        String   @id @default(uuid())
+  clipId    String
+  clip      Clip     @relation(fields: [clipId], references: [id], onDelete: Cascade)
+  status    String   @default("PENDING") // "PENDING", "PROCESSING", "DONE", "FAILED"
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clipId])
+}
+
 
 model Song {
   id           String            @id @default(uuid())

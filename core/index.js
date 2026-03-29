@@ -12,6 +12,7 @@ const os = require('os');
 const { prisma, SystemState, SystemMeta, Media } = require('./db');
 const { authenticate, login } = require('./auth');
 const { upload, getStorageUsage, S3_ENABLED } = require('./media');
+const { triggerSync } = require('./sync');
 
 const PORT = process.env.PORT || 3001;
 const STORAGE_QUOTA_BYTES = (parseInt(process.env.STORAGE_QUOTA_MB) || 5000) * 1024 * 1024;
@@ -293,6 +294,39 @@ app.delete('/api/clips/:id', authenticate, async (req, res) => {
         res.status(500).json({ error: 'Delete failed' });
     }
 });
+
+// Sync Engine API
+app.post('/api/clips/:id/sync', authenticate, async (req, res) => {
+    try {
+        const job = await triggerSync(req.params.id);
+        res.json(job);
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+app.get('/api/clips/:id/status', async (req, res) => {
+    try {
+        const clip = await prisma.clip.findUnique({
+            where: { id: req.params.id },
+            select: { 
+                status: true, 
+                exportUrl: true, 
+                error: true, 
+                exportedAt: true,
+                syncJobs: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1
+                }
+            }
+        });
+        if (!clip) return res.status(404).json({ error: 'Clip not found' });
+        res.json(clip);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch clip status' });
+    }
+});
+
 
 // Sermon Segmenting API
 app.post('/api/sermons/:id/segments', authenticate, async (req, res) => {

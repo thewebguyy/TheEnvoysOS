@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Play, Share2, Archive, BarChart, Clock, User, Calendar, Plus, Scissors, Trash2, ChevronLeft, Flag, CheckCircle, ExternalLink, Layout, Save } from 'lucide-react';
+import { Play, Share2, Archive, BarChart, Clock, User, Calendar, Plus, Scissors, Trash2, ChevronLeft, Flag, CheckCircle, ExternalLink, Layout, Save, UploadCloud, AlertCircle, Loader2 } from 'lucide-react';
 
 const BASE_URL = 'http://localhost:3001';
 
@@ -83,6 +83,20 @@ const PulpitOS = () => {
     }
   };
 
+  const exportClip = async (clipId) => {
+    try {
+      await axios.post(`${BASE_URL}/api/clips/${clipId}/sync`, {}, {
+        headers: { Authorization: `Bearer admin-token` }
+      });
+      // Start refreshing to show processing
+      if (selectedSermon) fetchSermonDetail(selectedSermon.id);
+      if (activeView === 'clips') fetchGlobalClips();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Export failed');
+    }
+  };
+
+
   // --- RENDERS ---
 
   if (selectedSermon) {
@@ -127,18 +141,40 @@ const PulpitOS = () => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <div>
                                         <p style={clipTitle}>{clip.title}</p>
-                                        <p style={clipMeta}>{clip.platform} • {clip.status}</p>
+                                        <p style={clipMeta}>{clip.platform} • <span style={statusStyle(clip.status)}>{clip.status}</span></p>
                                     </div>
-                                    <button onClick={() => updateClip(clip.id, { status: clip.status === 'READY' ? 'DRAFT' : 'READY' })} style={clip.status === 'READY' ? statusBtnReady : statusBtnDraft}>
-                                        {clip.status === 'READY' ? <CheckCircle size={14} /> : <Clock size={14} />}
-                                        {clip.status}
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <button onClick={() => updateClip(clip.id, { status: clip.status === 'READY' ? 'DRAFT' : 'READY' })} style={clip.status === 'READY' ? statusBtnReady : statusBtnDraft} disabled={clip.status === 'PROCESSING'}>
+                                            {clip.status === 'READY' ? <CheckCircle size={14} /> : <Clock size={14} />}
+                                            {clip.status === 'READY' ? 'READY' : 'DRAFT'}
+                                        </button>
+                                        
+                                        {(clip.status === 'READY' || clip.status === 'FAILED') && (
+                                            <button onClick={() => exportClip(clip.id)} style={btnExport}>
+                                                <UploadCloud size={14} /> Export
+                                            </button>
+                                        )}
+                                        
+                                        {clip.status === 'PROCESSING' && (
+                                            <div style={processingBadge}>
+                                                <Loader2 size={14} style={{ animation: 'spin 2s linear infinite' }} /> Syncing...
+                                            </div>
+                                        )}
+                                        
+                                        {clip.status === 'EXPORTED' && (
+                                            <a href={clip.exportUrl} target="_blank" rel="noreferrer" style={btnLink}>
+                                                <ExternalLink size={14} /> View
+                                            </a>
+                                        )}
+                                    </div>
                                 </div>
+                                {clip.error && <p style={errorText}><AlertCircle size={12} /> {clip.error}</p>}
                                 <p style={clipCaption}>{clip.caption || 'No caption provided.'}</p>
                             </div>
                         ))
                     )}
                 </div>
+
             </div>
           </div>
           
@@ -245,13 +281,31 @@ const PulpitOS = () => {
                             <p style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: '700' }}>{clip.sermon?.title} • {clip.platform}</p>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                            <div style={clip.status === 'READY' ? statusTagReady : statusTagDraft}>{clip.status}</div>
-                            <button onClick={() => updateClip(clip.id, { status: clip.status === 'READY' ? 'DRAFT' : 'READY' })} style={iconBtn} title="Toggle Sync Ready">
+                            <div style={statusBadgeStyle(clip.status)}>{clip.status}</div>
+                            
+                            {(clip.status === 'READY' || clip.status === 'FAILED') && (
+                                <button onClick={() => exportClip(clip.id)} style={btnExportSmall}>
+                                    <UploadCloud size={14} /> EXPORT
+                                </button>
+                            )}
+
+                            {clip.status === 'PROCESSING' && (
+                                <Loader2 size={16} style={{ animation: 'spin 2s linear infinite', color: '#3b82f6' }} />
+                            )}
+
+                            {clip.status === 'EXPORTED' && clip.exportUrl && (
+                                <a href={clip.exportUrl} target="_blank" rel="noreferrer" style={iconBtn} title="View External">
+                                    <ExternalLink size={16} />
+                                </a>
+                            )}
+
+                            <button onClick={() => updateClip(clip.id, { status: clip.status === 'READY' ? 'DRAFT' : 'READY' })} style={iconBtn} title="Toggle Sync Ready" disabled={clip.status === 'PROCESSING'}>
                                 {clip.status === 'READY' ? <CheckCircle size={16} /> : <Save size={16} />}
                             </button>
                         </div>
                     </div>
                 ))
+
             )}
         </div>
       )}
@@ -343,5 +397,39 @@ const pipelineRow = { backgroundColor: '#fff', borderRadius: '2rem', padding: '1
 const statusTag = (s) => ({ fontSize: '0.625rem', fontWeight: '900', backgroundColor: '#f3f4f6', padding: '0.5rem 1rem', borderRadius: '100px' });
 const statusTagReady = { fontSize: '0.625rem', fontWeight: '900', backgroundColor: '#dcfce7', color: '#15803d', padding: '0.5rem 1rem', borderRadius: '100px' };
 const statusTagDraft = { fontSize: '0.625rem', fontWeight: '900', backgroundColor: '#f3f4f6', color: '#6b7280', padding: '0.5rem 1rem', borderRadius: '100px' };
+const statusTagProcessing = { fontSize: '0.625rem', fontWeight: '900', backgroundColor: '#dbeafe', color: '#1d4ed8', padding: '0.5rem 1rem', borderRadius: '100px' };
+const statusTagExported = { fontSize: '0.625rem', fontWeight: '900', backgroundColor: '#f3e8ff', color: '#7e22ce', padding: '0.5rem 1rem', borderRadius: '100px' };
+const statusTagFailed = { fontSize: '0.625rem', fontWeight: '900', backgroundColor: '#fee2e2', color: '#b91c1c', padding: '0.5rem 1rem', borderRadius: '100px' };
+
+const statusStyle = (s) => {
+    if (s === 'READY') return { color: '#15803d' };
+    if (s === 'EXPORTED') return { color: '#7e22ce' };
+    if (s === 'PROCESSING') return { color: '#1d4ed8' };
+    if (s === 'FAILED') return { color: '#b91c1c' };
+    return { color: '#6b7280' };
+};
+
+const statusBadgeStyle = (s) => {
+    if (s === 'READY') return statusTagReady;
+    if (s === 'EXPORTED') return statusTagExported;
+    if (s === 'PROCESSING') return statusTagProcessing;
+    if (s === 'FAILED') return statusTagFailed;
+    return statusTagDraft;
+};
+
+const btnExport = { backgroundColor: '#000', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '100px', fontSize: '0.625rem', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem' };
+const btnExportSmall = { ...btnExport, padding: '0.4rem 0.8rem' };
+const btnLink = { backgroundColor: '#f3e8ff', color: '#7e22ce', textDecoration: 'none', padding: '0.5rem 1rem', borderRadius: '100px', fontSize: '0.625rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '0.375rem' };
+const processingBadge = { display: 'flex', alignItems: 'center', gap: '0.375rem', color: '#1d4ed8', fontSize: '0.625rem', fontWeight: '900', padding: '0.5rem 1rem', backgroundColor: '#dbeafe', borderRadius: '100px' };
+const errorText = { fontSize: '0.75rem', color: '#b91c1c', fontWeight: '600', marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.375rem' };
+
+const styleSheet = document.createElement("style");
+styleSheet.innerText = `
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+document.head.appendChild(styleSheet);
 
 export default PulpitOS;
