@@ -22,6 +22,7 @@ export type SermonEventData = {
   [SermonEventType.SERMON_RECORDED]: {
     sermonId: string;
     mediaId: string;
+    tenantId: string;
     duration: number;
     timestamp: Date;
   };

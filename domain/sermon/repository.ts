@@ -55,6 +55,7 @@ export class SermonRepository {
     this.publishEvent(SermonEventType.SERMON_RECORDED, {
       sermonId: sermon.id,
       mediaId: sermon.mediaId || 'unknown',
+      tenantId: sermon.tenantId,
       duration: 0, // Metadata would fill this in later
       timestamp: new Date()
     });
