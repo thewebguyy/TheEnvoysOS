@@ -15,9 +15,13 @@ const { upload, getStorageUsage, S3_ENABLED } = require('./media');
 const { triggerSync } = require('./sync');
 const { publishEvent, SermonEventType } = require('./events-bridge');
 const { SermonRepository } = require('../domain/sermon');
+const { ServiceRepository } = require('../domain/service');
+const { ServiceOrchestration } = require('../application/service-orchestration');
 
 const PORT = process.env.PORT || 3001;
 const sermonRepository = new SermonRepository(prisma);
+const serviceRepository = new ServiceRepository(prisma);
+const serviceOrchestration = new ServiceOrchestration({ serviceRepository, publishEvent });
 const STORAGE_QUOTA_BYTES = (parseInt(process.env.STORAGE_QUOTA_MB) || 5000) * 1024 * 1024;
 
 const app = express();
@@ -150,21 +154,7 @@ app.delete('/api/media/:id', authenticate, async (req, res) => {
 app.post('/api/services', authenticate, async (req, res) => {
     try {
         const { name } = req.body;
-        const service = await prisma.service.create({
-            data: {
-                name: name || `Sunday Service ${new Date().toLocaleDateString()}`,
-                date: new Date(),
-                status: 'LIVE',
-                tenantId: 'default' // Placeholder
-            }
-        });
-
-        // Event-driven: Emit service started
-        publishEvent(SermonEventType.SERVICE_STARTED, {
-            serviceId: service.id,
-            timestamp: new Date()
-        });
-
+        const service = await serviceOrchestration.startService(name);
         res.json(service);
     } catch (e) {
         res.status(500).json({ error: 'Failed to create service' });
@@ -174,10 +164,7 @@ app.post('/api/services', authenticate, async (req, res) => {
 app.patch('/api/services/:id', authenticate, async (req, res) => {
     try {
         const { status } = req.body;
-        const service = await prisma.service.update({
-            where: { id: req.params.id },
-            data: { status }
-        });
+        const service = await serviceOrchestration.updateServiceStatus(req.params.id, status);
         res.json(service);
     } catch (e) {
         res.status(500).json({ error: 'Failed to update service' });
