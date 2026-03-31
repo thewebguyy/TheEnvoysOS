@@ -13,8 +13,11 @@ const { prisma, SystemState, SystemMeta, Media } = require('./db');
 const { authenticate, login } = require('./auth');
 const { upload, getStorageUsage, S3_ENABLED } = require('./media');
 const { triggerSync } = require('./sync');
+const { publishEvent, SermonEventType } = require('./events-bridge');
+const { SermonRepository } = require('../domain/sermon');
 
 const PORT = process.env.PORT || 3001;
+const sermonRepository = new SermonRepository(prisma);
 const STORAGE_QUOTA_BYTES = (parseInt(process.env.STORAGE_QUOTA_MB) || 5000) * 1024 * 1024;
 
 const app = express();
@@ -155,6 +158,13 @@ app.post('/api/services', authenticate, async (req, res) => {
                 tenantId: 'default' // Placeholder
             }
         });
+
+        // Event-driven: Emit service started
+        publishEvent(SermonEventType.SERVICE_STARTED, {
+            serviceId: service.id,
+            timestamp: new Date()
+        });
+
         res.json(service);
     } catch (e) {
         res.status(500).json({ error: 'Failed to create service' });
@@ -178,15 +188,22 @@ app.patch('/api/services/:id', authenticate, async (req, res) => {
 app.post('/api/sermons', authenticate, async (req, res) => {
     try {
         const { title, speaker, serviceId, mediaId } = req.body;
-        const sermon = await prisma.sermon.create({
-            data: {
+        const sermon = await sermonRepository.createSermon({
                 title,
                 speaker,
                 serviceId,
                 mediaId,
                 tenantId: 'default' // Placeholder
-            }
+            });
+
+        // Event-driven: Emit sermon recorded (handoff)
+        publishEvent(SermonEventType.SERMON_RECORDED, {
+            sermonId: sermon.id,
+            mediaId: mediaId || '',
+            duration: 0, // TBD: Could be derived from media
+            timestamp: new Date()
         });
+
         res.json(sermon);
     } catch (e) {
         res.status(500).json({ error: 'Failed to create sermon record' });
@@ -195,10 +212,7 @@ app.post('/api/sermons', authenticate, async (req, res) => {
 
 app.get('/api/sermons', async (req, res) => {
     try {
-        const sermons = await prisma.sermon.findMany({
-            include: { media: true, _count: { select: { segments: true } } },
-            orderBy: { createdAt: 'desc' }
-        });
+        const sermons = await sermonRepository.findAllSermons();
         res.json(sermons);
     } catch (e) {
         res.status(500).json({ error: 'Failed to fetch sermons' });
@@ -207,16 +221,7 @@ app.get('/api/sermons', async (req, res) => {
 
 app.get('/api/sermons/:id', async (req, res) => {
     try {
-        const sermon = await prisma.sermon.findUnique({
-            where: { id: req.params.id },
-            include: { 
-                media: true, 
-                segments: { 
-                    include: { clips: true },
-                    orderBy: { startTime: 'asc' } 
-                } 
-            }
-        });
+        const sermon = await sermonRepository.findSermonById(req.params.id);
         if (!sermon) return res.status(404).json({ error: 'Not found' });
         res.json(sermon);
     } catch (e) {
@@ -227,10 +232,7 @@ app.get('/api/sermons/:id', async (req, res) => {
 // Clips (Distribution Prep) API
 app.get('/api/clips', async (req, res) => {
     try {
-        const clips = await prisma.clip.findMany({
-            include: { sermon: true, segment: true },
-            orderBy: { createdAt: 'desc' }
-        });
+        const clips = await sermonRepository.findAllClips();
         res.json(clips);
     } catch (e) {
         res.status(500).json({ error: 'Failed to fetch global clips' });
@@ -240,22 +242,7 @@ app.get('/api/clips', async (req, res) => {
 app.post('/api/segments/:id/clip', authenticate, async (req, res) => {
     try {
         const segmentId = req.params.id;
-        const segment = await prisma.sermonSegment.findUnique({
-            where: { id: segmentId }
-        });
-        if (!segment) return res.status(404).json({ error: 'Segment not found' });
-
-        const { title, caption, platform } = req.body;
-        const clip = await prisma.clip.create({
-            data: {
-                segmentId,
-                sermonId: segment.sermonId,
-                title: title || segment.title,
-                caption: caption || '',
-                platform: platform || 'YOUTUBE',
-                status: 'DRAFT'
-            }
-        });
+        const clip = await sermonRepository.createClipFromSegment(segmentId, { title, caption, platform });
         res.json(clip);
     } catch (e) {
         res.status(500).json({ error: 'Failed to create clip' });
@@ -264,10 +251,7 @@ app.post('/api/segments/:id/clip', authenticate, async (req, res) => {
 
 app.get('/api/sermons/:id/clips', async (req, res) => {
     try {
-        const clips = await prisma.clip.findMany({
-            where: { sermonId: req.params.id },
-            include: { segment: true }
-        });
+        const clips = await sermonRepository.findClipsBySermonId(req.params.id);
         res.json(clips);
     } catch (e) {
         res.status(500).json({ error: 'Failed to fetch sermon clips' });
@@ -276,10 +260,7 @@ app.get('/api/sermons/:id/clips', async (req, res) => {
 
 app.patch('/api/clips/:id', authenticate, async (req, res) => {
     try {
-        const clip = await prisma.clip.update({
-            where: { id: req.params.id },
-            data: req.body
-        });
+        const clip = await sermonRepository.updateClip(req.params.id, req.body);
         res.json(clip);
     } catch (e) {
         res.status(500).json({ error: 'Failed to update clip' });
@@ -288,7 +269,7 @@ app.patch('/api/clips/:id', authenticate, async (req, res) => {
 
 app.delete('/api/clips/:id', authenticate, async (req, res) => {
     try {
-        await prisma.clip.delete({ where: { id: req.params.id } });
+        await sermonRepository.deleteClip(req.params.id);
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: 'Delete failed' });
@@ -298,8 +279,14 @@ app.delete('/api/clips/:id', authenticate, async (req, res) => {
 // Sync Engine API
 app.post('/api/clips/:id/sync', authenticate, async (req, res) => {
     try {
-        const job = await triggerSync(req.params.id);
-        res.json(job);
+        // Event-driven transformation: Instead of direct trigger, we publish the intent.
+        publishEvent(SermonEventType.CLIP_READY_FOR_SYNC, { 
+            clipId: req.params.id,
+            timestamp: new Date()
+        });
+        
+        // We still respond success, but the system now relies on the backbone to pick it up.
+        res.json({ message: 'Sync queued via event bus' });
     } catch (e) {
         res.status(400).json({ error: e.message });
     }
@@ -307,19 +294,7 @@ app.post('/api/clips/:id/sync', authenticate, async (req, res) => {
 
 app.get('/api/clips/:id/status', async (req, res) => {
     try {
-        const clip = await prisma.clip.findUnique({
-            where: { id: req.params.id },
-            select: { 
-                status: true, 
-                exportUrl: true, 
-                error: true, 
-                exportedAt: true,
-                syncJobs: {
-                    orderBy: { createdAt: 'desc' },
-                    take: 1
-                }
-            }
-        });
+        const clip = await sermonRepository.getClipStatus(req.params.id);
         if (!clip) return res.status(404).json({ error: 'Clip not found' });
         res.json(clip);
     } catch (e) {
@@ -332,15 +307,13 @@ app.get('/api/clips/:id/status', async (req, res) => {
 app.post('/api/sermons/:id/segments', authenticate, async (req, res) => {
     try {
         const { title, startTime, endTime, type } = req.body;
-        const segment = await prisma.sermonSegment.create({
-            data: {
+        const segment = await sermonRepository.createSegment({
                 sermonId: req.params.id,
                 title,
                 startTime: parseInt(startTime) || 0,
                 endTime: parseInt(endTime) || 0,
-                type: type || 'CLIP'
-            }
-        });
+                type
+            });
         res.json(segment);
     } catch (e) {
         res.status(500).json({ error: 'Failed to create segment' });
@@ -349,10 +322,7 @@ app.post('/api/sermons/:id/segments', authenticate, async (req, res) => {
 
 app.patch('/api/segments/:id', authenticate, async (req, res) => {
     try {
-        const segment = await prisma.sermonSegment.update({
-            where: { id: req.params.id },
-            data: req.body
-        });
+        const segment = await sermonRepository.updateSegment(req.params.id, req.body);
         res.json(segment);
     } catch (e) {
         res.status(500).json({ error: 'Failed to update segment' });
@@ -361,7 +331,7 @@ app.patch('/api/segments/:id', authenticate, async (req, res) => {
 
 app.delete('/api/segments/:id', authenticate, async (req, res) => {
     try {
-        await prisma.sermonSegment.delete({ where: { id: req.params.id } });
+        await sermonRepository.deleteSegment(req.params.id);
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: 'Delete failed' });

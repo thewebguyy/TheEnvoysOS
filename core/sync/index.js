@@ -2,8 +2,12 @@
  * Sync Engine Manager
  */
 const { prisma } = require('../db');
+const { SermonRepository } = require('../../domain/sermon');
+const sermonRepository = new SermonRepository(prisma);
 const path = require('path');
 const fs = require('fs');
+const { eventBus } = require('../../events');
+const { SermonEventType } = require('../../events/schemas/sermon');
 
 const adapters = {};
 
@@ -30,9 +34,7 @@ function registerAdapters() {
  */
 async function triggerSync(clipId) {
     try {
-        const clip = await prisma.clip.findUnique({
-            where: { id: clipId }
-        });
+        const clip = await sermonRepository.findClipById(clipId);
         
         if (!clip) throw new Error("Clip not found");
         
@@ -42,12 +44,7 @@ async function triggerSync(clipId) {
         }
         
         // Create job record
-        const job = await prisma.syncJob.create({
-            data: {
-                clipId,
-                status: 'PENDING'
-            }
-        });
+        const job = await sermonRepository.createSyncJob(clipId);
         
         // Kick off sync in background (non-blocking)
         // We don't await this so the API returns immediately
@@ -66,10 +63,7 @@ async function triggerSync(clipId) {
  * @param {string} jobId 
  */
 async function processSyncJob(jobId) {
-    const job = await prisma.syncJob.findUnique({
-        where: { id: jobId },
-        include: { clip: true }
-    });
+    const job = await sermonRepository.findSyncJobById(jobId);
     
     if (!job) return;
     
@@ -77,10 +71,7 @@ async function processSyncJob(jobId) {
         console.log(`[SyncEngine] Processing job: ${jobId} for clip: ${job.clip.title}`);
         
         // Mark clip and job as processing
-        await prisma.$transaction([
-            prisma.syncJob.update({ where: { id: jobId }, data: { status: 'PROCESSING' } }),
-            prisma.clip.update({ where: { id: job.clipId }, data: { status: 'PROCESSING', error: null } })
-        ]);
+        await sermonRepository.updateSyncProgress(jobId, job.clipId, 'PROCESSING');
         
         const platform = job.clip.platform ? job.clip.platform.toUpperCase() : 'YOUTUBE';
         const adapter = adapters[platform];
@@ -92,40 +83,14 @@ async function processSyncJob(jobId) {
         const result = await adapter.upload(job.clip);
         
         // Finalize sync as DONE
-        await prisma.$transaction([
-            prisma.syncJob.update({ where: { id: jobId }, data: { status: 'DONE' } }),
-            prisma.clip.update({
-                where: { id: job.clipId },
-                data: {
-                    status: 'EXPORTED',
-                    exportUrl: result.url,
-                    exportedAt: new Date(),
-                    error: null
-                }
-            })
-        ]);
+        await sermonRepository.updateSyncProgress(jobId, job.clipId, 'DONE', null, result.url);
         
         console.log(`[SyncEngine] Job ${jobId} finished successfully.`);
     } catch (e) {
         console.error(`[SyncEngine] Job ${jobId} failed:`, e.name, e.message);
         
         // Handle failure
-        await prisma.$transaction([
-            prisma.syncJob.update({ 
-                where: { id: jobId }, 
-                data: { 
-                    status: 'FAILED',
-                    error: e.message
-                } 
-            }),
-            prisma.clip.update({
-                where: { id: job.clipId },
-                data: {
-                    status: 'FAILED',
-                    error: e.message
-                }
-            })
-        ]);
+        await sermonRepository.updateSyncProgress(jobId, job.clipId, 'FAILED', e.message);
     }
 }
 
@@ -134,10 +99,7 @@ function startWorker() {
     console.log(`[SyncEngine] Worker initialized. Monitoring for PENDING sync jobs...`);
     setInterval(async () => {
         try {
-            const pendingJobs = await prisma.syncJob.findMany({
-                where: { status: 'PENDING' },
-                take: 5
-            });
+            const pendingJobs = await sermonRepository.findPendingSyncJobs(5);
             
             for (const job of pendingJobs) {
                  // processSyncJob handles re-marking to avoid duplicates
@@ -151,9 +113,24 @@ function startWorker() {
     }, 10000); // Check every 10s
 }
 
+// Event-Driven Consumer: Replaces polling
+function startConsuming() {
+    console.log(`[SyncEngine] Event consumer registered. Listening for ${SermonEventType.CLIP_READY_FOR_SYNC}...`);
+    
+    eventBus.subscribe(SermonEventType.CLIP_READY_FOR_SYNC, async (payload) => {
+        try {
+            console.log(`[SyncEngine] Received sync intent for clip: ${payload.clipId}`);
+            await triggerSync(payload.clipId);
+        } catch (e) {
+            console.error(`[SyncEngine] Failed to handle sync event:`, e.message);
+        }
+    });
+}
+
 // Initial Registration
 registerAdapters();
-startWorker();
+startConsuming(); 
+// startWorker(); // Keep for legacy if needed, but we've transitioned to events.
 
 module.exports = {
     triggerSync,
